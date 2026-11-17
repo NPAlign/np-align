@@ -1,0 +1,4 @@
+# Your scans, screenshots and charts stay on this computer
+samples/
+.DS_Store
+node_modules/

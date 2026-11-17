@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NP Align</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="NP Align home">
+      <span class="wordmark">NP</span>
+      <span class="product">Align</span>
+      <span class="pill">Beta</span>
+    </a>
+
+    <nav class="stepper" id="stepper" aria-label="Progress" hidden>
+      <ol>
+        <li><button type="button" data-step="1" class="step"><span class="num">1</span><span class="label">Add Files</span></button></li>
+        <li><button type="button" data-step="2" class="step"><span class="num">2</span><span class="label">Align</span></button></li>
+        <li><button type="button" data-step="3" class="step"><span class="num">3</span><span class="label">Review</span></button></li>
+        <li><button type="button" data-step="4" class="step"><span class="num">4</span><span class="label">Print</span></button></li>
+      </ol>
+    </nav>
+
+    <div class="top-actions">
+      <a class="btn btn-outline" href="#/new"><span aria-hidden="true">+</span> New job</a>
+      <div class="account">
+        <button type="button" class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"></button>
+        <div class="menu" id="accountMenu" role="menu" hidden>
+          <a role="menuitem" href="#/profile">Profile</a>
+          <a role="menuitem" href="#/jobs">My Jobs</a>
+          <a role="menuitem" href="#/preferences">Preferences</a>
+          <a role="menuitem" href="#/guide">Setup Guide</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HOME -->
+    <section class="page" data-page="home" hidden>
+      <div class="wrap">
+        <h1 class="display" id="welcome">Welcome</h1>
+        <div class="home-grid">
+          <div class="card lift">
+            <h2>Start something new</h2>
+            <p class="lead">Have your chart, your canvas scan and a fresh xTool screenshot ready.</p>
+            <div class="btn-row"><a class="btn btn-primary" href="#/new">+ Start a new job</a><a class="link" href="#/guide">Setup guide</a></div>
+          </div>
+          <div class="card" id="resumeCard">
+            <h2>Pick up where you left off</h2>
+            <div id="resume"></div>
+          </div>
+          <div class="card flush span">
+            <div class="card-head"><h2>Recent jobs</h2><a class="link" href="#/jobs">See all jobs</a></div>
+            <ul class="job-list" id="recentJobs"></ul>
+          </div>
+          <div class="card side">
+            <h2>Your prints</h2>
+            <div class="stats" id="stats"></div>
+            <p class="note">Counted from your "How did it print?" answers.</p>
+          </div>
+          <div class="card span">
+            <h2>What you'll need</h2>
+            <ul class="needs">
+              <li><b>The blank canvas</b> you'll print on. One scan belongs to one canvas.</li>
+              <li><b>Matte card or paper</b> a little bigger than the canvas, in black or another dark or bold color. Not white or pale.</li>
+              <li><b>One solid dot</b> on the tape that holds the canvas, from a permanent marker or a small round sticker, darker than the tape.</li>
+              <li><b>A flatbed scanner</b> that saves PNG, JPG or TIFF at a true 600 dpi (300 dpi minimum).</li>
+              <li><b>An xTool M2</b> and xTool Studio on your Mac or Windows computer.</li>
+            </ul>
+          </div>
+          <div class="card side tip">
+            <h2>Tip: make the preview big</h2>
+            <p>Before taking the xTool screenshot, make xTool Studio full screen, hide side panels and zoom until the canvas fills the view. The bigger the canvas, the easier the lineup.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MY JOBS -->
+    <section class="page" data-page="jobs" hidden>
+      <div class="wrap narrow">
+        <h1 class="display">My jobs</h1>
+        <label class="search"><span class="sr">Search jobs</span><input type="search" id="jobSearch" placeholder="Search by name" /></label>
+        <div class="card flush"><ul class="job-list" id="allJobs"></ul></div>
+      </div>
+    </section>
+
+    <!-- PREFERENCES -->
+    <section class="page" data-page="preferences" hidden>
+      <div class="wrap narrow">
+        <h1 class="display">Preferences</h1>
+        <p class="lead">Every new job starts with these. Changing them on one job never changes them here. Each change saves as soon as you make it.</p>
+        <div class="card stack">
+          <h2>Your logo</h2>
+          <div class="logo-row">
+            <div class="logo-preview" id="logoPreview"><span>No logo yet</span></div>
+            <div class="stack-sm">
+              <label class="btn btn-outline btn-sm">Add or change logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden /></label>
+              <button type="button" class="btn btn-outline btn-sm" id="logoRemove">Remove logo</button>
+              <label class="field small"><span>Logo width</span><span class="with-unit"><input type="number" id="logoWidth" min="4" max="80" /><span class="unit">stitches</span></span></label>
+            </div>
+          </div>
+        </div>
+        <div class="card stack">
+          <h2>Color key and logo placement</h2>
+          <p class="note">Click a + to add one. Click the key to turn it between up-and-down and across. Hover over one to remove it.</p>
+          <div id="prefPicker"></div>
+        </div>
+        <div class="card stack">
+          <div class="row toggle-row">
+            <span class="field-label" id="pOutlineL">Outline very light colors</span>
+            <button type="button" role="switch" aria-labelledby="pOutlineL" id="pOutline" class="switch"><span></span></button>
+          </div>
+          <p class="note">Adds a thin gray line around very light colors so they show on white canvas, in the design, the color key and your logo. Turn it off to print them with no line.</p>
+        </div>
+        <div class="card stack">
+          <h2>Which way your design prints</h2>
+          <div class="segmented" role="radiogroup" aria-label="Which way your design prints">
+            <button type="button" role="radio" data-porient="match">Match canvas shape</button>
+            <button type="button" role="radio" data-porient="drawn">As drawn</button>
+          </div>
+          <p class="note">Match canvas shape turns your design sideways when the canvas is clearly longer the other way. As drawn prints it exactly the way your chart is drawn.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="page" data-page="profile" hidden>
+      <div class="wrap narrow">
+        <h1 class="display">Profile</h1>
+        <div class="card stack">
+          <label class="field col"><span>Your name</span><input type="text" id="pfName" autocomplete="name" /></label>
+          <label class="field col"><span>Shop name <em>(optional)</em></span><input type="text" id="pfShop" autocomplete="organization" /></label>
+          <p class="note">Saved on this computer only.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- GUIDE -->
+    <section class="page" data-page="guide" hidden>
+      <div class="wrap narrow prose" id="guideBody"></div>
+    </section>
+
+    <!-- JOB: STEP 1 -->
+    <section class="page" data-page="files" hidden>
+      <div class="screen-files">
+        <div class="files-main">
+          <label class="drop" id="chartDrop">
+            <input type="file" id="chartFile" accept="image/png" hidden />
+            <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
+            <span class="drop-body">
+              <span class="drop-title">Chart</span>
+              <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
+              <span class="drop-hint">A PNG: one color per stitch, no gridlines, symbols or border, bare canvas left transparent. One pixel per stitch is best; any whole number of pixels per stitch works.</span>
+              <span class="drop-check"></span>
+            </span>
+            <img class="drop-thumb pixelated" alt="" hidden />
+          </label>
+
+          <label class="drop" id="scanDrop">
+            <input type="file" id="scanFile" accept="image/png,image/jpeg,image/tiff" hidden />
+            <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
+            <span class="drop-body">
+              <span class="drop-title">Canvas Scan</span>
+              <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
+              <span class="drop-hint">PNG or JPG at 600 dpi (300 dpi minimum), every scanner enhancement off, with your dot and the whole design area in one pass.</span>
+              <span class="drop-check"></span>
+            </span>
+            <img class="drop-thumb" alt="" hidden />
+          </label>
+
+          <label class="drop" id="shotDrop">
+            <input type="file" id="shotFile" accept="image/png,image/jpeg" hidden />
+            <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
+            <span class="drop-body">
+              <span class="drop-title">xTool Screenshot</span>
+              <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
+              <span class="drop-hint">PNG or JPG of xTool Studio's close-up stitched preview, cropped to the canvas with a little tray around it, taken after the canvas is taped down.</span>
+              <span class="drop-check"></span>
+            </span>
+            <img class="drop-thumb" alt="" hidden />
+          </label>
+
+          <div class="card config">
+            <div class="card-head"><h2>Configure your canvas</h2><span class="note" id="jobOnly" hidden>Changes here are for this job only.</span></div>
+            <div class="row">
+              <label class="field"><span>Mesh</span>
+                <select id="mesh"><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18" selected>18</option></select>
+              </label>
+              <span class="field-label">Stitches</span>
+              <input id="stW" type="number" min="1" inputmode="numeric" aria-label="Stitches wide" />
+              <span class="times">×</span>
+              <input id="stH" type="number" min="1" inputmode="numeric" aria-label="Stitches high" />
+            </div>
+            <p class="note" id="sizeNote"></p>
+            <div class="row toggle-row">
+              <span class="field-label" id="outlineLabel">Outline very light colors</span>
+              <button type="button" role="switch" aria-labelledby="outlineLabel" id="outline" class="switch"><span></span></button>
+            </div>
+            <div class="orient">
+              <span class="field-label">Which way it prints</span>
+              <div class="orient-row">
+                <div class="segmented" role="radiogroup" aria-label="Which way it prints">
+                  <button type="button" role="radio" data-orient="match">Match canvas shape</button>
+                  <button type="button" role="radio" data-orient="drawn">As drawn</button>
+                </div>
+                <p class="note">Turns your design if the canvas is clearly longer the other way. You can turn it yourself on the Review step.</p>
+              </div>
+            </div>
+            <div class="stack-sm">
+              <div class="card-head"><span class="field-label">Color key and logo placement</span><button type="button" class="link" id="usePrefs">Use my preferences</button></div>
+              <div id="jobPicker"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="files-side">
+          <div class="card status-card">
+            <h2 class="eyebrow">Print job setup</h2>
+            <ul class="checklist">
+              <li id="chkChart"><span class="tick" aria-hidden="true"></span>Chart</li>
+              <li id="chkScan"><span class="tick" aria-hidden="true"></span>Canvas scan</li>
+              <li id="chkShot"><span class="tick" aria-hidden="true"></span>xTool screenshot</li>
+            </ul>
+            <button type="button" id="startAlign" class="btn btn-block btn-primary" disabled>Start alignment</button>
+            <p class="note center">Nothing prints until you've looked at the result.</p>
+          </div>
+          <div class="tips">
+            <h3>Before you scan</h3>
+            <ul>
+              <li>Tape the canvas to dark card at its margins.</li>
+              <li>Add one solid dot on the tape over the canvas, near a corner, outside the design.</li>
+              <li>Scan face down at 600 dpi with every enhancement off.</li>
+            </ul>
+            <a class="link" href="#/guide">Full setup guide</a>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- JOB: STEPS 2–4 -->
+    <section class="page screen-work" data-page="work" hidden>
+      <div class="stage">
+        <canvas id="view" tabindex="0" aria-label="Preview. Scroll to zoom, drag to move."></canvas>
+        <div class="stage-tabs segmented small" role="radiogroup" aria-label="Picture">
+          <button type="button" role="radio" data-pic="shot" aria-checked="true">xTool camera</button>
+          <button type="button" role="radio" data-pic="scan" aria-checked="false">Scan</button>
+        </div>
+        <div class="busy" id="busy" hidden><div class="spinner" aria-hidden="true"></div><p id="busyMsg">Working</p></div>
+        <div class="zoombar">
+          <button type="button" class="icon-btn" id="zoomOut" aria-label="Zoom out">−</button>
+          <span id="zoomPct">100%</span>
+          <button type="button" class="icon-btn" id="zoomIn" aria-label="Zoom in">+</button>
+          <button type="button" class="text-btn" id="zoomFit">Fit</button>
+          <button type="button" class="text-btn" id="zoomLeft">Left end</button>
+          <button type="button" class="text-btn" id="zoomRight">Right end</button>
+          <button type="button" class="text-btn" id="zoomDot">Dot</button>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div id="panel2" class="panel-body">
+          <h2>Lining up</h2>
+          <ol class="progress" id="alignProgress">
+            <li data-k="scan">Reading the scan</li>
+            <li data-k="shot">Reading the xTool screenshot</li>
+            <li data-k="match">Matching the two pictures</li>
+          </ol>
+          <div class="alerts" id="alignAlerts"></div>
+          <div class="actions"><button type="button" class="btn btn-outline" id="backToFiles">Back</button></div>
+        </div>
+
+        <div id="panel3" class="panel-body" hidden>
+          <h2>Review</h2>
+          <div class="rerun" id="rerunBanner" hidden><span>The dot moved, so the job needs a re-run.</span><button type="button" class="btn btn-primary btn-sm" id="rerunNow">Re-run now</button></div>
+          <ul class="checks" id="checks"></ul>
+          <div class="alerts" id="fitAlerts"></div>
+          <div class="btn-row"><button type="button" class="btn btn-outline btn-sm" id="setDot" aria-pressed="false">Set the dot yourself</button></div>
+          <p class="note" id="setDotNote" hidden>Click the middle of your dot in the picture shown. Switch between xTool camera and Scan to set it in each.</p>
+          <details class="adjust" id="adjust">
+            <summary>Adjust</summary>
+            <div class="stack">
+              <div class="field-label">Turn the chart, from how it looks in the preview</div>
+              <div class="btn-row">
+                <button type="button" class="btn btn-outline btn-sm" data-turn="-1">Turn left</button>
+                <button type="button" class="btn btn-outline btn-sm" data-turn="1">Turn right</button>
+                <button type="button" class="btn btn-outline btn-sm" data-turn="2">Upside down</button>
+              </div>
+              <div class="field-label">Color key and logo</div>
+              <div id="reviewPicker"></div>
+              <div class="row">
+                <label class="field small"><span>Move across</span><input id="nudgeX" type="number" inputmode="numeric" value="0" /></label>
+                <label class="field small"><span>Move down</span><input id="nudgeY" type="number" inputmode="numeric" value="0" /></label>
+                <button type="button" class="btn btn-outline btn-sm" id="recenter">Center</button>
+              </div>
+              <p class="note">Moves are in stitches, from centered on the intersections both pictures share.</p>
+            </div>
+          </details>
+          <label class="slider"><span>Design opacity</span><input type="range" id="opacity" min="0" max="100" value="90" /></label>
+          <div class="row toggle-row">
+            <span class="field-label" id="ptsLabel">Show intersections</span>
+            <button type="button" role="switch" aria-checked="false" aria-labelledby="ptsLabel" id="showPts" class="switch"><span></span></button>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-outline" id="backToAlign">Back</button>
+            <button type="button" class="btn btn-primary" id="toPrint">Create my print file</button>
+          </div>
+        </div>
+
+        <div id="panel4" class="panel-body" hidden>
+          <h2>Your print file</h2>
+          <dl class="facts" id="printFacts"></dl>
+          <button type="button" class="btn btn-primary btn-block" id="downloadSvg">Download the print file (SVG)</button>
+          <h3>In xTool Studio</h3>
+          <ol class="steps-list">
+            <li><b>Import the SVG. Don't resize it.</b> It's already real size in millimeters, with a magenta frame around it.</li>
+            <li><b>Drag the magenta frame onto the stitched preview.</b> Zoom right in on one corner and line it up exactly. Never rotate or scale it, and don't open the lid or take a new preview until it's placed.</li>
+            <li><b>Check with a Close shot</b> or two, aimed at the spot you're checking. Turn color layers off and on to check each one. A few arrow-key nudges are fine.</li>
+            <li><b>Delete the magenta frame, then print.</b></li>
+          </ol>
+          <div class="card mini">
+            <h3>How did it print?</h3>
+            <div class="btn-row" id="outcome">
+              <button type="button" class="btn btn-outline btn-sm" data-outcome="lined-up">Lined up</button>
+              <button type="button" class="btn btn-outline btn-sm" data-outcome="off">It was off</button>
+            </div>
+          </div>
+          <div class="actions"><button type="button" class="btn btn-outline" id="backToReview">Back</button></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <dialog id="afterPrint" class="dialog">
+    <h2 id="apTitle">Thanks, saved</h2>
+    <p id="apText"></p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-outline" id="apAgain" hidden>Run this job again</button>
+      <a class="btn btn-primary" href="#/new" id="apNew">Start a new job</a>
+      <a class="btn btn-outline" href="#/" id="apHome">Back to home</a>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

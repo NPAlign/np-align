@@ -1,0 +1,8 @@
+{
+  "name": "needlepoint-aligner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tools/test-align.mjs"
+  }
+}
