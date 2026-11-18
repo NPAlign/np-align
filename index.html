@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181608" />
+  <link rel="stylesheet" href="styles.css?v=202611181615" />
 </head>
 <body>
   <header class="topbar">
@@ -317,6 +317,8 @@
           <h2>Your print file</h2>
           <dl class="facts" id="printFacts"></dl>
           <button type="button" class="btn btn-primary btn-block" id="downloadSvg">Download the print file (SVG)</button>
+          <button type="button" class="btn btn-outline btn-block" id="downloadPng">Download as PNG (to edit)</button>
+          <p class="note" id="pngNote">The PNG is the same print at 400 dpi with a transparent background, the same size as the SVG. Recolor or erase in xTool Studio if you like, but don't resize, crop or rotate it. Its edges line up the way the magenta frame does.</p>
           <h3>In xTool Studio</h3>
           <ol class="steps-list">
             <li><b>Import the SVG. Don't resize it.</b> It's already real size in millimeters, with a magenta frame around it.</li>
@@ -347,6 +349,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181608"></script>
+  <script type="module" src="src/app.js?v=202611181615"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181608';
-import { renderPrint, rotateDesign } from './render.js?v=202611181608';
-import { readDpi } from './png.js?v=202611181608';
-import { matchGrids } from './match.js?v=202611181608';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181608';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181608';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181608';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181608';
+import { Viewer } from './viewer.js?v=202611181615';
+import { renderPrint, rotateDesign } from './render.js?v=202611181615';
+import { readDpi, setPngDpi } from './png.js?v=202611181615';
+import { matchGrids } from './match.js?v=202611181615';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181615';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181615';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181615';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181615';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -478,7 +478,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181608', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181615', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
@@ -975,6 +975,32 @@ function enterPrint() {
   updateViewer(true);
   document.querySelectorAll('[data-outcome]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.outcome === J.status)));
 }
+// The same print as a PNG, for editing: transparent background, real size
+// written into the file (400 dpi), no magenta frame (its edges do that job).
+$('downloadPng').addEventListener('click', async () => {
+  const btn = $('downloadPng');
+  btn.disabled = true; btn.textContent = 'Preparing PNG';
+  try {
+    const dpi = 400;
+    const k = (dpi * R.geo.mmPerPx) / 25.4; // canvas px per screenshot px
+    const c = drawPreview(document.createElement('canvas'), R.shot, R.shapes, R.frame, k, false);
+    const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('This print is too big for your browser to make as a PNG. Use the SVG.');
+    const out = await setPngDpi(blob, dpi);
+    const mm = `${R.svg.mmW.toFixed(1)}x${R.svg.mmH.toFixed(1)}mm`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(out);
+    a.download = `${(J.name || 'print').replace(/[^\w-]+/g, '-')}-print-${mm}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    toast(`PNG downloaded: ${R.svg.mmW.toFixed(1)} × ${R.svg.mmH.toFixed(1)} mm at ${dpi} dpi`);
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Download as PNG (to edit)';
+  }
+});
+
 $('downloadSvg').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([R.svg.svg], { type: 'image/svg+xml' }));

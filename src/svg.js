@@ -4,7 +4,7 @@
 // around its intersection with the four holes left empty. One layer per
 // colour; a magenta guide frame follows the outer intersections.
 
-import { inverseMap } from './match.js?v=202611181608';
+import { inverseMap } from './match.js?v=202611181615';
 
 const LIGHT = 232; // luminance above which a colour counts as very light
 
@@ -209,7 +209,7 @@ export function buildSvg(shot, geo, shapes, frame, mesh) {
 }
 
 /** Draw the preview at `scale` canvas pixels per screenshot pixel. */
-export function drawPreview(canvas, shot, shapes, frame, scale) {
+export function drawPreview(canvas, shot, shapes, frame, scale, withFrame = true) {
   canvas.width = Math.round(shot.width * scale);
   canvas.height = Math.round(shot.height * scale);
   const ctx = canvas.getContext('2d');
@@ -224,6 +224,7 @@ export function drawPreview(canvas, shot, shapes, frame, scale) {
     if (light) { ctx.strokeStyle = '#969696'; ctx.lineWidth = shot.pitch * 0.06; ctx.stroke(); }
   }
   void frame;
+  if (!withFrame) return canvas;
   ctx.strokeStyle = '#ff00ff';
   ctx.lineWidth = Math.max(2 / scale, 1);
   ctx.strokeRect(0.5, 0.5, shot.width - 1, shot.height - 1);
