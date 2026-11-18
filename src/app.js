@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181623';
-import { renderPrint, rotateDesign } from './render.js?v=202611181623';
-import { readDpi, setPngDpi } from './png.js?v=202611181623';
-import { matchGrids } from './match.js?v=202611181623';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181623';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181623';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181623';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181623';
+import { Viewer } from './viewer.js?v=202611181632';
+import { renderPrint, rotateDesign } from './render.js?v=202611181632';
+import { readDpi, setPngDpi } from './png.js?v=202611181632';
+import { matchGrids } from './match.js?v=202611181632';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181632';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181632';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181632';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181632';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -19,6 +19,15 @@ function show(name) {
 }
 
 const avatar = $('avatar'), menu = $('accountMenu');
+// The site's version, at the bottom of the account menu
+{
+  const v = document.querySelector('meta[name="np-version"]')?.content || '';
+  const m = v.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  $('appVersion').textContent = m
+    ? `Version ${new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5])).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+    : 'Version: local copy';
+}
+
 // The account button: a pink heart
 function refreshAvatar() {
   const p = profile.get();
@@ -516,7 +525,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181623', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181632', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {

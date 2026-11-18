@@ -462,3 +462,5 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 
 .pc-menu { min-width: 230px; }
 .pc-menu button { white-space: nowrap; }
+
+.menu-version { display: block; padding: 8px 12px 4px; margin-top: 4px; border-top: 1px solid #ddd; font-size: 12px; color: var(--ink-3); }

@@ -18,7 +18,9 @@ for (const f of files) {
     // new URL('./worker.js', import.meta.url)
     .replace(/(new URL\(['"]\.\/[\w-]+\.js)(\?v=\d+)?(['"])/g, `$1?v=${v}$3`)
     // <script src="src/app.js"> and <link href="styles.css">
-    .replace(/((?:src|href)="(?:src\/[\w-]+\.js|styles\.css))(\?v=\d+)?(")/g, `$1?v=${v}$3`);
+    .replace(/((?:src|href)="(?:src\/[\w-]+\.js|styles\.css))(\?v=\d+)?(")/g, `$1?v=${v}$3`)
+    // <meta name="np-version" content="...">: shown in the account menu
+    .replace(/(<meta name="np-version" content=")\d+(")/, `$1${v}$2`);
   if (after !== before) writeFileSync(p, after);
 }
 console.log(`stamped version ${v}`);
