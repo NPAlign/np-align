@@ -278,24 +278,26 @@ async function loadChart(file, restoring = false) {
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(bmp, 0, 0);
     const data = ctx.getImageData(0, 0, bmp.width, bmp.height).data;
-    const block = blockSize(data, bmp.width, bmp.height);
-    if (bmp.width / block > 400 || bmp.height / block > 400) throw new Error(`This chart could not be added: it counts as ${bmp.width / block} × ${bmp.height / block} stitches, and the most is 400 a side. If it has gridlines, smoothing or a border, export it again without them.`);
+    const block = findBlock(data, bmp.width, bmp.height); // pixels per stitch, or null if unsure
     R.chart = { bmp, data, w: bmp.width, h: bmp.height, block };
     if (!restoring) {
       J.files.chart = file;
       J.name = (file.name || 'chart').replace(/\.[^.]+$/, '');
-      J.stW = bmp.width / block; J.stH = bmp.height / block;
+      // a new chart sets the stitch count when it can be counted; otherwise you type it
+      J.stW = block ? bmp.width / block : null; J.stH = block ? bmp.height / block : null;
       const t = document.createElement('canvas');
-      const s = Math.min(1, 96 / Math.max(J.stW, J.stH));
-      t.width = Math.max(1, Math.round(J.stW * s)); t.height = Math.max(1, Math.round(J.stH * s));
+      const s = Math.min(1, 96 / Math.max(bmp.width, bmp.height) * (block || 1));
+      const tw = block ? J.stW : bmp.width, th = block ? J.stH : bmp.height;
+      t.width = Math.max(1, Math.round(tw * s)); t.height = Math.max(1, Math.round(th * s));
       const tc = t.getContext('2d'); tc.imageSmoothingEnabled = false; tc.drawImage(bmp, 0, 0, t.width, t.height);
       J.thumb = t.toDataURL();
       J.whiteChoice = null;
-      $('stW').value = J.stW; $('stH').value = J.stH;
+      $('stW').value = J.stW ?? ''; $('stH').value = J.stH ?? '';
       sizeNote();
       save();
     }
     chartTile();
+    if (!block && !(J.stW && J.stH)) $('stW').focus();
   } catch (e) {
     tile('chartDrop', { ok: false, name: file.name || 'chart', lines: [['bad', e.message]] });
     R.chart = null;
@@ -305,7 +307,9 @@ async function loadChart(file, restoring = false) {
 function chartTile() {
   if (!R?.chart) return;
   const err = chartError();
-  const lines = err ? [['bad', err]] : [['ok', `${J.stW} × ${J.stH} stitches${R.chart.block > 1 ? ` (${R.chart.w / J.stW} px per stitch)` : ''}`]];
+  const lines = err
+    ? [[R.chart.block || J.stW ? 'bad' : 'warn', R.chart.block || J.stW ? err : `The stitches couldn't be counted from this picture on its own. Type the stitch count, width × height, in Configure your canvas below.`]]
+    : [['ok', `${J.stW} × ${J.stH} stitches${R.chart.w / J.stW > 1 ? ` (${R.chart.w / J.stW} px per stitch)` : ''}`]];
   let extra = '';
   if (!err) {
     const raw = chartStitches(true);
@@ -364,6 +368,54 @@ function stitchesUrl(st) {
   c.getContext('2d').putImageData(new ImageData(st.data, st.width, st.height), 0, 0);
   return c.toDataURL();
 }
+// Pixels per stitch. First the exact way (every run of identical pixels is a
+// multiple of it); if the export has soft edges, faint gridlines or slight
+// colour noise, try each square size that divides the picture evenly and
+// keep the biggest whose squares are one colour through their middles.
+// null when it can't tell: you then type the stitch count.
+function findBlock(d, w, h) {
+  const g = blockSize(d, w, h);
+  if (g > 1 && w / g <= 400 && h / g <= 400) return g;
+  const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+  const common = gcd(w, h);
+  const cands = [];
+  for (let k = common; k >= 2; k--) if (common % k === 0 && w / k <= 400 && h / k <= 400) cands.push(k);
+  for (const k of cands) {
+    const cols = w / k, rows = h / k;
+    const step = Math.max(1, Math.floor(Math.sqrt((cols * rows) / 3000)));
+    let tested = 0, flat = 0;
+    for (let by = 0; by < rows; by += step) for (let bx = 0; bx < cols; bx += step) {
+      tested++;
+      const c0 = ((Math.floor((by + 0.5) * k)) * w + Math.floor((bx + 0.5) * k)) * 4;
+      let ok = true;
+      for (const fy of [0.3, 0.5, 0.7]) for (const fx of [0.3, 0.5, 0.7]) {
+        const i = (Math.floor((by + fy) * k) * w + Math.floor((bx + fx) * k)) * 4;
+        if (Math.abs(d[i] - d[c0]) > 40 || Math.abs(d[i + 1] - d[c0 + 1]) > 40 || Math.abs(d[i + 2] - d[c0 + 2]) > 40 || Math.abs(d[i + 3] - d[c0 + 3]) > 100) { ok = false; break; }
+      }
+      if (ok) flat++;
+    }
+    if (tested && flat / tested >= 0.97) return k;
+  }
+  return w <= 400 && h <= 400 ? 1 : null;
+}
+// Fold near-identical shades (export noise) into the most-used one.
+function mergeNearColors(st) {
+  const d = st.data, counts = new Map();
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] >= 128) { const key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]; counts.set(key, (counts.get(key) || 0) + 1); }
+  if (counts.size < 2) return;
+  const order = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  const pal = [], to = new Map();
+  for (const key of order) {
+    const r = key >> 16, g = (key >> 8) & 255, b = key & 255;
+    const near = pal.find(([pr, pg, pb]) => (pr - r) ** 2 + (pg - g) ** 2 + (pb - b) ** 2 < 18 * 18);
+    if (near) to.set(key, near); else { const c = [r, g, b]; pal.push(c); to.set(key, c); }
+  }
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;
+    const c = to.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2];
+  }
+}
 // Largest block size that every run of identical pixels is a multiple of.
 function blockSize(d, w, h) {
   const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
@@ -389,6 +441,7 @@ function chartError() {
   if (!R?.chart) return 'No chart';
   const { w, h } = R.chart;
   if (!(J.stW > 0 && J.stH > 0)) return 'Enter the stitch count, width × height.';
+  if (J.stW > 400 || J.stH > 400) return 'The most is 400 stitches a side.';
   if (w % J.stW || h % J.stH) return `This chart could not be added: ${w} × ${h} px doesn't split evenly into ${J.stW} × ${J.stH} stitches. Export it at one pixel per stitch, or a whole number of pixels per stitch.`;
   if (w / J.stW !== h / J.stH) return 'The pixels per stitch must be the same across and down. Check the stitch count.';
   return null;
@@ -398,11 +451,26 @@ function chartStitches(raw = false) {
   const { data, w } = R.chart;
   const k = R.chart.w / J.stW;
   const out = { width: J.stW, height: J.stH, data: new Uint8ClampedArray(J.stW * J.stH * 4) };
+  // each stitch: the most common colour in the middle of its square, so soft
+  // edges and gridlines around the square don't count
+  const pts = k >= 4 ? [0.3, 0.5, 0.7] : [0.5];
+  const counts = new Map();
   for (let y = 0; y < J.stH; y++) for (let x = 0; x < J.stW; x++) {
-    const sx = Math.floor(x * k + k / 2), sy = Math.floor(y * k + k / 2);
-    const s = (sy * w + sx) * 4, o = (y * J.stW + x) * 4;
-    out.data[o] = data[s]; out.data[o + 1] = data[s + 1]; out.data[o + 2] = data[s + 2]; out.data[o + 3] = data[s + 3];
+    counts.clear();
+    let best = 0, bestKey = 0, bestIdx = 0;
+    for (const fy of pts) for (const fx of pts) {
+      const sx = Math.min(w - 1, Math.floor((x + fx) * k)), sy = Math.min(R.chart.h - 1, Math.floor((y + fy) * k));
+      const s = (sy * w + sx) * 4;
+      const key = data[s + 3] < 128 ? -1 : (data[s] << 16) | (data[s + 1] << 8) | data[s + 2];
+      const n = (counts.get(key) || 0) + 1;
+      counts.set(key, n);
+      if (n > best) { best = n; bestKey = key; bestIdx = s; }
+    }
+    const o = (y * J.stW + x) * 4;
+    if (bestKey === -1) continue; // bare canvas
+    out.data[o] = data[bestIdx]; out.data[o + 1] = data[bestIdx + 1]; out.data[o + 2] = data[bestIdx + 2]; out.data[o + 3] = 255;
   }
+  mergeNearColors(out);
   if (!raw && J.whiteChoice === 'remove') return applyWhite(out, whiteOutside(out).mask);
   return out;
 }
