@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js';
-import { renderPrint, rotateDesign } from './render.js';
-import { readDpi } from './png.js';
-import { matchGrids } from './match.js';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js';
+import { Viewer } from './viewer.js?v=202611181608';
+import { renderPrint, rotateDesign } from './render.js?v=202611181608';
+import { readDpi } from './png.js?v=202611181608';
+import { matchGrids } from './match.js?v=202611181608';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181608';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181608';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181608';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181608';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -478,7 +478,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181608', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {

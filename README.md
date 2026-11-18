@@ -31,3 +31,12 @@ node tools/test-align.mjs
 
 Runs the engine on synthetic warped canvases (13 and 18 mesh, 300–1200 dpi) and checks
 every detected intersection against its true position.
+
+## Publishing an update
+
+```bash
+node tools/stamp-version.mjs
+git commit -am "..." && git push
+```
+
+The version stamp makes browsers fetch the new code instead of a saved copy.
