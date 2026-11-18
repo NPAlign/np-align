@@ -139,15 +139,19 @@ export function cornerPicker(el, api) {
         <span class="pc-item pc-logo${p.logo.missing ? ' missing' : ''}" role="img" aria-label="Logo, ${name}${p.logo.missing ? ', no room' : ''}">${api.logoUrl?.() ? `<img src="${api.logoUrl()}" alt="" />` : 'Logo'}</span>
         <button type="button" class="pc-remove" data-remove="logo" aria-label="Remove logo">×</button></div>`;
     }
-    const canKey = !p.key && (!api.roomFor || api.roomFor(c, 'key', 'down') || api.roomFor(c, 'key', 'across'));
-    const canLogo = !p.logo && api.hasLogo() && (!api.roomFor || api.roomFor(c, 'logo'));
-    const any = canKey || canLogo;
+    // every empty corner can take the color key (placing it, or moving it
+    // here) or a logo (placing the one you have, or uploading one now)
+    const keyRoom = !api.roomFor || api.roomFor(c, 'key', p.key?.dir || 'down') || api.roomFor(c, 'key', p.key?.dir === 'down' ? 'across' : 'down');
+    const haveLogo = api.hasLogo();
+    const logoRoom = !api.roomFor || !haveLogo || api.roomFor(c, 'logo');
+    const opts = [
+      `<button type="button" data-put="key" data-corner="${c}" ${keyRoom ? '' : 'disabled'}>${p.key ? 'Move color key here' : 'Color key'}${keyRoom ? '' : ' (no room here)'}</button>`,
+      haveLogo ? `<button type="button" data-put="logo" data-corner="${c}" ${logoRoom ? '' : 'disabled'}>${p.logo ? 'Move logo here' : 'Logo'}${logoRoom ? '' : ' (no room here)'}</button>` : '',
+      api.uploadLogo ? `<button type="button" data-upload="${c}">${haveLogo ? 'Change logo (PNG or JPEG)…' : 'Upload a logo (PNG or JPEG)…'}</button>` : '',
+    ].filter(Boolean);
     return `<div class="pc pc-${c}">
-      <button type="button" class="pc-add" data-add="${c}" ${any ? '' : 'disabled'} aria-label="${any ? `Add to ${name}` : `No room in ${name} corner`}">+</button>
-      <div class="pc-menu" hidden>
-        ${!p.key ? `<button type="button" data-put="key" data-corner="${c}" ${canKey ? '' : 'disabled'}>Color key</button>` : ''}
-        ${!p.logo ? `<button type="button" data-put="logo" data-corner="${c}" ${canLogo ? '' : 'disabled'}>${api.hasLogo() ? 'Logo' : 'Logo (add one in Preferences)'}</button>` : ''}
-      </div></div>`;
+      <button type="button" class="pc-add" data-add="${c}" aria-haspopup="menu" aria-label="Add the color key or a logo to the ${name} corner">+</button>
+      <div class="pc-menu" role="menu" hidden>${opts.join('')}</div></div>`;
   };
   el.addEventListener('click', (e) => {
     const t = e.target.closest('button');
@@ -156,13 +160,25 @@ export function cornerPicker(el, api) {
     if (t.dataset.add) {
       const menu = t.nextElementSibling;
       el.querySelectorAll('.pc-menu').forEach((m) => m !== menu && (m.hidden = true));
-      const opts = [...menu.querySelectorAll('button:not([disabled])')];
-      if (opts.length === 1) return opts[0].click();
       menu.hidden = !menu.hidden;
       return;
     }
+    if (t.dataset.upload) {
+      const c = t.dataset.upload;
+      t.closest('.pc-menu').hidden = true;
+      Promise.resolve(api.uploadLogo()).then((ok) => {
+        if (!ok) return;
+        const q = structuredClone(api.get());
+        q.logo = { corner: c };
+        if (q.key?.corner === c) q.key = null; // the two never share a corner
+        api.set(q);
+        render();
+      });
+      return;
+    }
     if (t.dataset.put === 'key') {
-      const dir = !api.roomFor || api.roomFor(t.dataset.corner, 'key', 'down') ? 'down' : 'across';
+      const want = p.key?.dir || 'down';
+      const dir = !api.roomFor || api.roomFor(t.dataset.corner, 'key', want) ? want : want === 'down' ? 'across' : 'down';
       p.key = { corner: t.dataset.corner, dir };
     }
     if (t.dataset.put === 'logo') p.logo = { corner: t.dataset.corner };
@@ -173,6 +189,9 @@ export function cornerPicker(el, api) {
     if (t.dataset.remove) p[t.dataset.remove] = null;
     api.set(p);
     render();
+  });
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target)) el.querySelectorAll('.pc-menu').forEach((m) => (m.hidden = true));
   });
   render();
   return { render };

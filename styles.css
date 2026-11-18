@@ -459,3 +459,6 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 @media (max-width: 760px) { .avatar svg { width: 21px; height: 21px; } }
 
 .product .plus { color: var(--accent); font-weight: 900; font-size: 1.35em; line-height: 1; margin-left: -0.04em; letter-spacing: 0; vertical-align: -0.06em; }
+
+.pc-menu { min-width: 230px; }
+.pc-menu button { white-space: nowrap; }

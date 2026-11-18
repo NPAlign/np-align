@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181620';
-import { renderPrint, rotateDesign } from './render.js?v=202611181620';
-import { readDpi, setPngDpi } from './png.js?v=202611181620';
-import { matchGrids } from './match.js?v=202611181620';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181620';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181620';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181620';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181620';
+import { Viewer } from './viewer.js?v=202611181623';
+import { renderPrint, rotateDesign } from './render.js?v=202611181623';
+import { readDpi, setPngDpi } from './png.js?v=202611181623';
+import { matchGrids } from './match.js?v=202611181623';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181623';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181623';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181623';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181623';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -108,6 +108,32 @@ $('allJobs').addEventListener('click', async (e) => {
   renderJobs();
 });
 
+// ===================================================================== logos
+// Ask for a PNG or JPEG and return it as a small data URL (or null).
+function pickLogo() {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg';
+    input.onchange = async () => {
+      const f = input.files[0];
+      if (!f) return resolve(null);
+      if (!/^image\/(png|jpeg)$/.test(f.type)) { toast('Use a PNG or JPEG for your logo.'); return resolve(null); }
+      try { resolve(await logoDataUrl(f)); } catch { toast('That logo could not be opened. Try another PNG or JPEG.'); resolve(null); }
+    };
+    input.addEventListener('cancel', () => resolve(null));
+    input.click();
+  });
+}
+async function logoDataUrl(file) {
+  const bmp = await createImageBitmap(file);
+  const c = document.createElement('canvas');
+  const s = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
+  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
+}
+
 // ===================================================================== preferences
 let prefPicker = null;
 function showPrefs() {
@@ -123,6 +149,15 @@ function showPrefs() {
     get: () => prefs.get().placements,
     set: (pl) => { const q = prefs.get(); q.placements = pl; prefs.set(q); },
     hasLogo: () => !!prefs.get().logo,
+    logoUrl: () => prefs.get().logo,
+    uploadLogo: async () => {
+      const url = await pickLogo();
+      if (!url) return false;
+      const q = prefs.get(); q.logo = url;
+      if (!prefs.set(q)) { toast('That logo is too large to save. Try a smaller image.'); return false; }
+      renderLogoPreview(url);
+      return true;
+    },
   };
   if (!prefPicker) prefPicker = cornerPicker($('prefPicker'), api); else prefPicker.render();
 }
@@ -140,12 +175,7 @@ document.querySelectorAll('[data-porient]').forEach((b) => b.addEventListener('c
 $('logoFile').addEventListener('change', async () => {
   const f = $('logoFile').files[0];
   if (!f) return;
-  const bmp = await createImageBitmap(f);
-  const c = document.createElement('canvas');
-  const s = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
-  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  const p = prefs.get(); p.logo = c.toDataURL('image/png');
+  const p = prefs.get(); p.logo = await logoDataUrl(f);
   if (!prefs.set(p)) return toast('That logo is too large to save. Try a smaller image.');
   renderLogoPreview(p.logo);
   prefPicker?.render();
@@ -486,7 +516,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181620', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181623', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
@@ -642,6 +672,14 @@ const jobPicker = cornerPicker($('jobPicker'), {
   logoUrl: () => J?.logo,
   set: (pl) => { J.placements = pl; customized(); },
   hasLogo: () => !!J?.logo,
+  uploadLogo: async () => {
+    const url = await pickLogo();
+    if (!url) return false;
+    J.logo = url; if (R) R.logoBmp = null;
+    customized();
+    toast('Logo added to this job. Set one for every job in Preferences.');
+    return true;
+  },
 });
 $('usePrefs').addEventListener('click', () => {
   const p = prefs.get();
@@ -747,6 +785,14 @@ async function enterReview() {
         return p;
       },
       logoUrl: () => J.logo,
+      uploadLogo: async () => {
+        const url = await pickLogo();
+        if (!url) return false;
+        J.logo = url;
+        R.logoBmp = await createImageBitmap(await (await fetch(url)).blob());
+        customized();
+        return true;
+      },
       set: (pl) => { for (const k of ['key', 'logo']) if (pl[k]) delete pl[k].missing; J.placements = pl; customized(); refreshReview(); },
       hasLogo: () => !!J.logo,
       aspect: () => { const b = sharedBox(R.geo); return (b.c1 - b.c0 + 1) / (b.r1 - b.r0 + 1); },
