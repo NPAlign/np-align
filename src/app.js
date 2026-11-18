@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181619';
-import { renderPrint, rotateDesign } from './render.js?v=202611181619';
-import { readDpi, setPngDpi } from './png.js?v=202611181619';
-import { matchGrids } from './match.js?v=202611181619';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181619';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181619';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181619';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181619';
+import { Viewer } from './viewer.js?v=202611181620';
+import { renderPrint, rotateDesign } from './render.js?v=202611181620';
+import { readDpi, setPngDpi } from './png.js?v=202611181620';
+import { matchGrids } from './match.js?v=202611181620';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181620';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181620';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181620';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181620';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -486,7 +486,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181619', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181620', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
