@@ -6,7 +6,7 @@
 // up as strong local contrast; card, tape and paper are smooth. Patches of
 // texture at least an inch across are canvases.
 
-import { setPngDpi } from './png.js?v=202611181724';
+import { setPngDpi } from './png.js?v=202611181728';
 
 /** Find canvases. Returns [{ x, y, w, h }] boxes in full-scan pixels, reading order. */
 export function findCanvases(bitmap, dpi) {

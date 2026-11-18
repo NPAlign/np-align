@@ -1,13 +1,14 @@
-import { Viewer } from './viewer.js?v=202611181724';
-import { renderPrint, rotateDesign } from './render.js?v=202611181724';
-import { readDpi, setPngDpi } from './png.js?v=202611181724';
-import { matchGrids } from './match.js?v=202611181724';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181724';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181724';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181724';
-import { sniff, readTiff, readStitchly, readOxs, pdfBitmap, stitchlyCodes, learnColours } from './formats.js?v=202611181724';
-import { findCanvases, cropBoxes, cropFile, thumb as canvasThumb } from './batch.js?v=202611181724';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181724';
+import { Viewer } from './viewer.js?v=202611181728';
+import { renderPrint, rotateDesign } from './render.js?v=202611181728';
+import { readDpi, setPngDpi } from './png.js?v=202611181728';
+import { matchGrids } from './match.js?v=202611181728';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181728';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181728';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181728';
+import { sniff, readTiff, readStitchly, readOxs, pdfBitmap, stitchlyCodes, learnColours } from './formats.js?v=202611181728';
+import { findCanvases, cropBoxes, cropFile, thumb as canvasThumb } from './batch.js?v=202611181728';
+import { makeBackup, readBackup, restoreBackup } from './backup.js?v=202611181728';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181728';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -155,6 +156,7 @@ function showPrefs() {
   document.querySelectorAll('[data-porient]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.porient === p.orient)));
   $('logoWidth').value = p.logoWidth;
   showColourCount();
+  showLastBackup();
   $('pWidth').value = Math.round((p.stitchWidth ?? 0.6) * 100);
   $('pWidthOut').textContent = widthLabel(p.stitchWidth ?? 0.6);
   renderLogoPreview(p.logo);
@@ -198,6 +200,54 @@ $('logoRemove').addEventListener('click', () => {
   if (p.placements.logo) p.placements.logo = null;
   prefs.set(p); renderLogoPreview(null); prefPicker?.render();
 });
+// ---------------------------------------------------------------- back up & restore
+function showLastBackup() {
+  let last = null;
+  try { last = localStorage.getItem('ia.lastBackup'); } catch { /* storage blocked */ }
+  $('lastBackup').textContent = last ? `Last backup: ${new Date(+last).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : 'No backup downloaded from this browser yet.';
+}
+const backupNote = (text, kind = 'ok') => {
+  const d = document.createElement('div'); d.className = `alert ${kind}`; d.textContent = text;
+  $('backupResult').innerHTML = ''; $('backupResult').append(d);
+};
+$('backupNow').addEventListener('click', async () => {
+  const btn = $('backupNow');
+  btn.disabled = true; btn.textContent = 'Preparing backup';
+  try {
+    const { blob, jobs: n } = await makeBackup();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `np-align-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    try { localStorage.setItem('ia.lastBackup', String(Date.now())); } catch { /* storage blocked */ }
+    backupNote(`Backup downloaded: ${n} job${n === 1 ? '' : 's'} with ${n === 1 ? 'its' : 'their'} files, plus your preferences and profile (${(blob.size / 1e6).toFixed(1)} MB). Keep it somewhere safe, like iCloud Drive.`);
+    showLastBackup();
+  } catch (e) {
+    backupNote(`The backup couldn't be made: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Download backup';
+  }
+});
+$('restoreFile').addEventListener('change', async () => {
+  const f = $('restoreFile').files[0];
+  $('restoreFile').value = '';
+  if (!f) return;
+  try {
+    const b = await readBackup(f);
+    const n = b.meta.jobs?.length || 0;
+    const made = new Date(b.meta.made).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    if (!confirm(`Restore the backup from ${made}?\n\n${n} job${n === 1 ? '' : 's'} will be added (any that were restored from this backup before are replaced, not doubled). Your preferences, logo, thread colors and profile will be replaced by the backup's.`)) return;
+    const { restored } = await restoreBackup(b);
+    J = null;
+    refreshAvatar();
+    showPrefs();
+    backupNote(`Restored ${restored} job${restored === 1 ? '' : 's'}, your preferences and your profile from the backup of ${made}.`);
+  } catch (e) {
+    backupNote(e.message, 'error');
+  }
+});
+
 // ---------------------------------------------------------------- thread colours
 function showColourCount() {
   const n = Object.keys(prefs.get().threadColors || {}).length;
@@ -762,7 +812,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181724', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181728', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {

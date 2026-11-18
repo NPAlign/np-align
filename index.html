@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="np-version" content="202611181724" />
+  <meta name="np-version" content="202611181728" />
   <title>NP Align</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181724" />
+  <link rel="stylesheet" href="styles.css?v=202611181728" />
 </head>
 <body>
   <header class="topbar">
@@ -159,6 +159,16 @@
           </div>
           <div class="alerts" id="learnResult"></div>
           <p class="note" id="learnCount"></p>
+        </div>
+        <div class="card stack" id="backupCard">
+          <h2>Back up &amp; restore</h2>
+          <p class="note">Your jobs (with their charts, scans and screenshots), preferences, logo, thread colors and profile are kept in this browser only. Download a backup now and then and keep it somewhere safe, like iCloud Drive. Restore it here or on any other computer.</p>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary btn-sm" id="backupNow">Download backup</button>
+            <label class="btn btn-outline btn-sm">Restore from backup<input type="file" id="restoreFile" accept=".zip,application/zip" hidden /></label>
+          </div>
+          <div class="alerts" id="backupResult"></div>
+          <p class="note" id="lastBackup"></p>
         </div>
         <div class="card stack">
           <h2>Which way your design prints</h2>
@@ -394,6 +404,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181724"></script>
+  <script type="module" src="src/app.js?v=202611181728"></script>
 </body>
 </html>

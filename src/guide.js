@@ -57,6 +57,9 @@ export const GUIDE_HTML = `
   <li>Delete the magenta frame, then print.</li>
 </ol>
 <p>First time? Try it on scrap canvas with a small, simple chart.</p>
+
+<h2>7. Keep a backup</h2>
+<p>Your jobs, preferences, logo and thread colors live in this browser only. In <b>Preferences › Back up &amp; restore</b>, download a backup now and then and keep it in iCloud Drive or another safe place. <b>Restore from backup</b> puts everything back, on this computer or a new one.</p>
 `;
 
 export const TROUBLE_HTML = `

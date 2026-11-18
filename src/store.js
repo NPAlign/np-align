@@ -40,6 +40,8 @@ export const jobs = {
     return job;
   },
   remove: (id) => tx('readwrite', (s) => s.delete(id)),
+  /** Save exactly as given (restoring a backup keeps each job's own date). */
+  putRaw: (job) => tx('readwrite', (s) => s.put(job)),
   newId: () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
 };
 
