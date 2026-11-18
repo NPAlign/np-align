@@ -1,12 +1,13 @@
-import { Viewer } from './viewer.js?v=202611181700';
-import { renderPrint, rotateDesign } from './render.js?v=202611181700';
-import { readDpi, setPngDpi } from './png.js?v=202611181700';
-import { matchGrids } from './match.js?v=202611181700';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181700';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181700';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181700';
-import { sniff, readTiff, readStitchly, readOxs, pdfBitmap, stitchlyCodes, learnColours } from './formats.js?v=202611181700';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181700';
+import { Viewer } from './viewer.js?v=202611181724';
+import { renderPrint, rotateDesign } from './render.js?v=202611181724';
+import { readDpi, setPngDpi } from './png.js?v=202611181724';
+import { matchGrids } from './match.js?v=202611181724';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181724';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181724';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181724';
+import { sniff, readTiff, readStitchly, readOxs, pdfBitmap, stitchlyCodes, learnColours } from './formats.js?v=202611181724';
+import { findCanvases, cropBoxes, cropFile, thumb as canvasThumb } from './batch.js?v=202611181724';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181724';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -50,6 +51,7 @@ async function route() {
   if (a === 'jobs') return showJobs();
   if (a === 'preferences') return showPrefs();
   if (a === 'profile') return showProfile();
+  if (a === 'batch') return show('batch');
   if (a === 'guide') { $('guideBody').innerHTML = GUIDE_HTML + TROUBLE_HTML; return show('guide'); }
   if (a === 'new') {
     const j = await newJob();
@@ -263,6 +265,79 @@ for (const id of ['pfName', 'pfShop']) {
     refreshAvatar();
   });
 }
+
+// ===================================================================== several canvases
+let batch = [];
+$('batchFile').addEventListener('change', () => { const f = $('batchFile').files[0]; $('batchFile').value = ''; if (f) loadBatch(f); });
+$('batchDrop').addEventListener('dragover', (e) => { e.preventDefault(); $('batchDrop').classList.add('dragging'); });
+$('batchDrop').addEventListener('dragleave', () => $('batchDrop').classList.remove('dragging'));
+$('batchDrop').addEventListener('drop', (e) => { e.preventDefault(); $('batchDrop').classList.remove('dragging'); if (e.dataTransfer.files[0]) loadBatch(e.dataTransfer.files[0]); });
+
+async function loadBatch(file) {
+  const status = $('batchStatus');
+  const say = (kind, text) => (status.innerHTML = `<span class="chk ${kind}">${esc(text)}</span>`);
+  $('batchList').innerHTML = '';
+  $('batchActions').hidden = true;
+  batch = [];
+  try {
+    say('info', 'Looking for canvases…');
+    const kind = await sniff(file);
+    if (!['png', 'jpeg', 'tiff'].includes(kind)) throw new Error('Use a PNG, JPEG or TIFF scan.');
+    const dpi = (kind === 'tiff' ? (await tiffImage(file)).dpi : readDpi(await file.slice(0, 256 * 1024).arrayBuffer())) || 600;
+    if (dpi < 300) throw new Error(`This scan is ${dpi} dpi. Scan again at 600 dpi (300 dpi is the lowest that works).`);
+    const bmp = await decode(file);
+    const boxes = findCanvases(bmp, dpi);
+    if (!boxes.length) throw new Error('No canvases found. Scan in Color on dark card, with every scanner enhancement off.');
+    const crops = cropBoxes(boxes, bmp.width, bmp.height, dpi);
+    say('ok', `Found ${crops.length} canvas${crops.length === 1 ? '' : 'es'} on this ${(bmp.width / dpi).toFixed(1)} × ${(bmp.height / dpi).toFixed(1)} in scan.`);
+    const base = (file.name || 'scan').replace(/\.[^.]+$/, '');
+    crops.forEach((box, i) => {
+      const li = document.createElement('li');
+      li.className = 'batch-item';
+      li.innerHTML = `<img src="${canvasThumb(bmp, box)}" alt="Canvas ${i + 1}" />
+        <span class="batch-text"><b>Canvas ${i + 1}</b><span class="drop-check"><span class="chk info">Checking…</span></span></span>
+        <button type="button" class="btn btn-outline btn-sm" data-start="${i}" disabled>Start a job</button>`;
+      $('batchList').append(li);
+      batch.push({ box, li, file: null, n: i + 1 });
+    });
+    // cut out and check each canvas in turn
+    for (const it of batch) {
+      it.file = await cropFile(bmp, it.box, dpi, `${base} canvas ${it.n}.png`);
+      const lines = [];
+      try {
+        const r = await analyze(it.file, { dpi, mesh: 18, polarity: 'auto' });
+        const b = sharedBoxOf(r.intersections);
+        lines.push(['ok', `${r.measuredMesh.toFixed(1)} mesh · canvas about ${((b.c1 - b.c0 + 1) / r.measuredMesh).toFixed(1)} × ${((b.r1 - b.r0 + 1) / r.measuredMesh).toFixed(1)} in`]);
+        lines.push(...dotLines(r.dot, 'scan'));
+      } catch (e) {
+        lines.push(['bad', 'No intersections found on this canvas.']);
+      }
+      it.li.querySelector('.drop-check').innerHTML = lines.map(([k, t]) => `<span class="chk ${k}">${esc(t)}</span>`).join('');
+      it.li.querySelector('[data-start]').disabled = false;
+    }
+    $('batchActions').hidden = batch.length < 2;
+  } catch (e) {
+    say('bad', e.message);
+  }
+}
+async function startBatchJob(it) {
+  const j = await newJob();
+  j.name = `Canvas ${it.n}`;
+  j.files.scan = it.file;
+  await jobs.put(j);
+  return j;
+}
+$('batchList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-start]');
+  if (!b) return;
+  const j = await startBatchJob(batch[+b.dataset.start]);
+  location.hash = `#/job/${j.id}`;
+});
+$('batchAll').addEventListener('click', async () => {
+  for (const it of batch) await startBatchJob(it);
+  toast(`${batch.length} jobs started. Add each one's chart and xTool screenshot.`);
+  location.hash = '#/jobs';
+});
 
 // ===================================================================== job
 let J = null; // persisted job
@@ -687,7 +762,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181700', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181724', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {

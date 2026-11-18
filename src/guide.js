@@ -23,6 +23,7 @@ export const GUIDE_HTML = `
   <tr><td>Scan area</td><td>The whole glass, so no intersections are cropped off</td></tr>
 </table>
 <p>Upload the scan on a new job: its tile shows the mesh and canvas size it measured, and whether it found your dot.</p>
+<p><b>Several blanks at once:</b> on big glass (11 × 17 in), tape each blank to dark card with its own dot, leave at least an inch between them, and scan them together. On the home page, choose <b>Several canvases on one scan</b>: NP Align finds each canvas, cuts it out with its tape and dot, and starts a job for each one.</p>
 
 <h2>3. Tape it to the xTool M2 tray</h2>
 <ul>

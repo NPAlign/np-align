@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="np-version" content="202611181700" />
+  <meta name="np-version" content="202611181724" />
   <title>NP Align</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181700" />
+  <link rel="stylesheet" href="styles.css?v=202611181724" />
 </head>
 <body>
   <header class="topbar">
@@ -51,7 +51,7 @@
           <div class="card lift">
             <h2>Start something new</h2>
             <p class="lead">Have your chart, your canvas scan and a fresh xTool screenshot ready.</p>
-            <div class="btn-row"><a class="btn btn-primary" href="#/new">+ Start a new job</a><a class="link" href="#/guide">Setup guide</a></div>
+            <div class="btn-row"><a class="btn btn-primary" href="#/new">+ Start a new job</a><a class="link" href="#/batch">Several canvases on one scan</a><a class="link" href="#/guide">Setup guide</a></div>
           </div>
           <div class="card" id="resumeCard">
             <h2>Pick up where you left off</h2>
@@ -90,6 +90,28 @@
         <h1 class="display">My jobs</h1>
         <label class="search"><span class="sr">Search jobs</span><input type="search" id="jobSearch" placeholder="Search by name" /></label>
         <div class="card flush"><ul class="job-list" id="allJobs"></ul></div>
+      </div>
+    </section>
+
+    <!-- SEVERAL CANVASES ON ONE SCAN -->
+    <section class="page" data-page="batch" hidden>
+      <div class="wrap narrow">
+        <h1 class="display">Several canvases</h1>
+        <p class="lead">Scan several blanks at once on big glass (11 × 17 in), each taped to dark card with its own dot. NP Align finds each canvas and cuts it out, tape and dot included, as a scan of its own. Then start a job for each one and add its chart and xTool screenshot as usual.</p>
+        <label class="drop" id="batchDrop">
+          <input type="file" id="batchFile" accept="image/png,image/jpeg,image/tiff,.tif,.tiff" hidden />
+          <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
+          <span class="drop-body">
+            <span class="drop-title">Scan of several canvases</span>
+            <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
+            <span class="drop-hint">PNG, JPEG or TIFF at 600 dpi (300 dpi minimum). Leave at least an inch between canvases.</span>
+            <span class="drop-check" id="batchStatus"></span>
+          </span>
+        </label>
+        <ul class="batch-list" id="batchList"></ul>
+        <div class="btn-row" id="batchActions" hidden>
+          <button type="button" class="btn btn-primary" id="batchAll">Start jobs for all</button>
+        </div>
       </div>
     </section>
 
@@ -372,6 +394,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181700"></script>
+  <script type="module" src="src/app.js?v=202611181724"></script>
 </body>
 </html>

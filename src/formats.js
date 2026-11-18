@@ -5,7 +5,7 @@
 //  - PDF charts (first page drawn as a picture, then read like a PNG)
 // A chart pattern comes back as one pixel per stitch, bare canvas transparent.
 
-import { DMC } from './dmc.js?v=202611181700';
+import { DMC } from './dmc.js?v=202611181724';
 
 /** What kind of file this is, from its first bytes and name. */
 export async function sniff(file) {
