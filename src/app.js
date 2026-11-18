@@ -1,11 +1,12 @@
-import { Viewer } from './viewer.js?v=202611181632';
-import { renderPrint, rotateDesign } from './render.js?v=202611181632';
-import { readDpi, setPngDpi } from './png.js?v=202611181632';
-import { matchGrids } from './match.js?v=202611181632';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181632';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181632';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181632';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181632';
+import { Viewer } from './viewer.js?v=202611181655';
+import { renderPrint, rotateDesign } from './render.js?v=202611181655';
+import { readDpi, setPngDpi } from './png.js?v=202611181655';
+import { matchGrids } from './match.js?v=202611181655';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181655';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181655';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181655';
+import { sniff, readTiff, readStitchly, readOxs, pdfBitmap } from './formats.js?v=202611181655';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181655';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -309,29 +310,68 @@ setupDrop('chartDrop', 'chartFile', (f) => loadChart(f));
 setupDrop('scanDrop', 'scanFile', (f) => loadScan(f));
 setupDrop('shotDrop', 'shotFile', (f) => loadShot(f));
 
+const tiffCache = new WeakMap();
+async function tiffImage(file) {
+  if (!tiffCache.has(file)) tiffCache.set(file, readTiff(await file.arrayBuffer()));
+  return tiffCache.get(file);
+}
 async function decode(file) {
+  if ((await sniff(file)) === 'tiff') {
+    const t = await tiffImage(file);
+    return createImageBitmap(new ImageData(t.data, t.width, t.height));
+  }
   try { return await createImageBitmap(file); } catch {
-    throw new Error(/tiff?$/i.test(file.name || '') ? 'This browser cannot open TIFF files yet. Save the scan as PNG and upload that.' : 'This file could not be opened. Use PNG or JPG.');
+    throw new Error('This file could not be opened. Use PNG, JPEG or TIFF.');
   }
 }
 
 // ---------------------------------------------------------------- chart
 async function loadChart(file, restoring = false) {
   try {
-    if (!/png$/i.test(file.type) && !/\.png$/i.test(file.name || '')) throw new Error('This chart could not be added: charts must be PNG. PDF and JPG charts are not taken.');
-    const bmp = await decode(file);
+    const kind = await sniff(file);
+    let bmp, pattern = null, note = null;
+    if (kind === 'stitchly' || kind === 'oxs') {
+      // a pattern file: one stitch per cell, real thread colours
+      pattern = kind === 'stitchly' ? await readStitchly(file, prefs.get().threadColors || {}) : await readOxs(file);
+      pattern = trimPattern(pattern);
+      if (!pattern.width) throw new Error('This chart has no stitches in it.');
+      const pc = document.createElement('canvas');
+      pc.width = pattern.width; pc.height = pattern.height;
+      pc.getContext('2d').putImageData(new ImageData(pattern.data, pattern.width, pattern.height), 0, 0);
+      bmp = await createImageBitmap(pc);
+      note = kind === 'stitchly' ? 'Stitchly chart' : 'OXS chart';
+    } else if (kind === 'macstitch') {
+      throw new Error("MacStitch keeps its own .chart files locked. In MacStitch, export the chart as OXS (File › Export) and add that file here.");
+    } else if (kind === 'stitchalot') {
+      throw new Error("StitchALot files can't be read yet. Export the chart from StitchALot as a PNG with one square per stitch and no gridlines, and add that.");
+    } else if (kind === 'pdf') {
+      const r = await pdfBitmap(file);
+      bmp = r.bitmap;
+      note = r.pages > 1 ? `PDF: page 1 of ${r.pages} used` : 'PDF';
+    } else if (['png', 'jpeg', 'webp', 'tiff'].includes(kind)) {
+      bmp = await decode(file);
+      if (kind === 'jpeg') note = 'JPEG: small colour smudges are cleaned up';
+    } else {
+      throw new Error('This chart could not be added. Use a Stitchly, OXS, PNG, JPEG, TIFF or PDF chart.');
+    }
     const c = document.createElement('canvas');
     c.width = bmp.width; c.height = bmp.height;
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(bmp, 0, 0);
     const data = ctx.getImageData(0, 0, bmp.width, bmp.height).data;
-    const block = findBlock(data, bmp.width, bmp.height); // pixels per stitch, or null if unsure
-    R.chart = { bmp, data, w: bmp.width, h: bmp.height, block };
+    let block = pattern ? 1 : findBlock(data, bmp.width, bmp.height); // pixels per stitch, or null if unsure
+    let fractional = null;
+    if (!block && kind === 'pdf') {
+      // a PDF page is drawn at whatever size fits, so a stitch is rarely a whole number of pixels
+      fractional = findCountFractional(data, bmp.width, bmp.height);
+    }
+    R.chart = { bmp, data, w: bmp.width, h: bmp.height, block, pattern, note, fractional: kind === 'pdf' };
+    if (pattern?.mesh && !restoring && pattern.mesh >= 10 && pattern.mesh <= 18) { J.mesh = pattern.mesh; $('mesh').value = String(J.mesh); }
     if (!restoring) {
       J.files.chart = file;
       J.name = (file.name || 'chart').replace(/\.[^.]+$/, '');
       // a new chart sets the stitch count when it can be counted; otherwise you type it
-      J.stW = block ? bmp.width / block : null; J.stH = block ? bmp.height / block : null;
+      J.stW = block ? bmp.width / block : fractional ? fractional[0] : null; J.stH = block ? bmp.height / block : fractional ? fractional[1] : null;
       const t = document.createElement('canvas');
       const s = Math.min(1, 96 / Math.max(bmp.width, bmp.height) * (block || 1));
       const tw = block ? J.stW : bmp.width, th = block ? J.stH : bmp.height;
@@ -356,8 +396,16 @@ function chartTile() {
   const err = chartError();
   const lines = err
     ? [[R.chart.block || J.stW ? 'bad' : 'warn', R.chart.block || J.stW ? err : `The stitches couldn't be counted from this picture on its own. Type the stitch count, width × height, in Configure your canvas below.`]]
-    : [['ok', `${J.stW} × ${J.stH} stitches${R.chart.w / J.stW > 1 ? ` (${R.chart.w / J.stW} px per stitch)` : ''}`]];
+    : [['ok', `${J.stW} × ${J.stH} stitches${R.chart.w / J.stW > 1.01 ? ` (${+(R.chart.w / J.stW).toFixed(1)} px per stitch)` : ''}`]];
+  if (R.chart.note) lines.unshift(['info', R.chart.note]);
   let extra = '';
+  const threads = R.chart.pattern?.threads;
+  if (threads) {
+    const unknown = threads.filter((t) => !t.known);
+    if (unknown.length) lines.push(['warn', `${unknown.length} thread${unknown.length > 1 ? 's' : ''} without a known colour. Pick each one's colour below; NP Align remembers it for your next charts.`]);
+    extra += `<span class="threads">${threads.sort((a, b) => b.count - a.count).map((t) =>
+      `<span class="thread${t.known ? '' : ' unknown'}"><input type="color" value="${t.hex}" data-thread="${esc(t.code)}" aria-label="Colour for ${esc(t.name)}" /><span>${esc(t.name)} <small>×${t.count}</small></span></span>`).join('')}</span>`;
+  }
   if (!err) {
     const raw = chartStitches(true);
     const white = whiteOutside(raw);
@@ -376,6 +424,38 @@ function chartTile() {
     if (total > 40) lines.push(['warn', 'Over 40 colors: is this a photo rather than a flat chart? The key shows the 40 most used.']);
   }
   tile('chartDrop', { ok: !err, name: J.files.chart?.name || 'chart', thumb: J.thumb, lines, extra });
+}
+// a thread colour set by hand: remembered for every chart, and this chart reloads
+$('chartDrop').addEventListener('change', (e) => {
+  const inp = e.target.closest('[data-thread]');
+  if (!inp) return;
+  e.stopPropagation();
+  const p = prefs.get();
+  p.threadColors = { ...(p.threadColors || {}), [inp.dataset.thread]: inp.value };
+  prefs.set(p);
+  if (J.files.chart) loadChart(J.files.chart, true).then(() => { const t = chartThumb(); if (t) { J.thumb = t; save(); } });
+});
+function chartThumb() {
+  if (!R?.chart || !(J.stW && J.stH)) return null;
+  const st = chartStitches(true);
+  const t = document.createElement('canvas');
+  const s = Math.min(1, 96 / Math.max(st.width, st.height));
+  t.width = Math.max(1, Math.round(st.width * s)); t.height = Math.max(1, Math.round(st.height * s));
+  const src = document.createElement('canvas'); src.width = st.width; src.height = st.height;
+  src.getContext('2d').putImageData(new ImageData(st.data, st.width, st.height), 0, 0);
+  const tc = t.getContext('2d'); tc.imageSmoothingEnabled = false; tc.drawImage(src, 0, 0, t.width, t.height);
+  return t.toDataURL();
+}
+// Crop a pattern to its stitched area (a Stitchly grid is often the whole canvas).
+function trimPattern(p) {
+  let x0 = p.width, x1 = -1, y0 = p.height, y1 = -1;
+  for (let y = 0; y < p.height; y++) for (let x = 0; x < p.width; x++) if (p.data[(y * p.width + x) * 4 + 3] >= 128) {
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  if (x1 < 0) return { ...p, width: 0, height: 0 };
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) data.set(p.data.subarray(((y0 + y) * p.width + x0) * 4, ((y0 + y) * p.width + x1 + 1) * 4), y * w * 4);
+  return { ...p, width: w, height: h, data };
 }
 $('chartDrop').addEventListener('click', (e) => {
   const b = e.target.closest('[data-white]');
@@ -445,6 +525,39 @@ function findBlock(d, w, h) {
   }
   return w <= 400 && h <= 400 ? 1 : null;
 }
+// For a picture drawn at any size (a PDF page): the stitch count whose squares
+// are one colour through their middles, trying every count from 10 to 400.
+function findCountFractional(d, w, h) {
+  // background: the colour in the corners (or transparent); only squares that
+  // land on the design are judged, so plain margins can't make a wrong grid look right
+  const px = (x, y) => (Math.min(h - 1, y) * w + Math.min(w - 1, x)) * 4;
+  const bg = px(1, 1);
+  const isBg = (i) => (d[i + 3] < 128 && d[bg + 3] < 128) || (Math.abs(d[i] - d[bg]) < 20 && Math.abs(d[i + 1] - d[bg + 1]) < 20 && Math.abs(d[i + 2] - d[bg + 2]) < 20 && Math.abs(d[i + 3] - d[bg + 3]) < 60);
+  const flatAt = (n) => {
+    const k = w / n, m = Math.round(h / k);
+    if (m < 2 || Math.abs(h / k - m) > 0.25) return 0;
+    const ky = h / m;
+    let tested = 0, flat = 0;
+    for (let by = 0; by < m; by++) for (let bx = 0; bx < n; bx++) {
+      const c0 = px(Math.floor((bx + 0.5) * k), Math.floor((by + 0.5) * ky));
+      if (isBg(c0)) continue;
+      tested++;
+      let ok = true;
+      for (const fy of [0.25, 0.5, 0.75]) for (const fx of [0.25, 0.5, 0.75]) {
+        const i = px(Math.floor((bx + fx) * k), Math.floor((by + fy) * ky));
+        if (Math.abs(d[i] - d[c0]) > 40 || Math.abs(d[i + 1] - d[c0 + 1]) > 40 || Math.abs(d[i + 2] - d[c0 + 2]) > 40 || Math.abs(d[i + 3] - d[c0 + 3]) > 100) { ok = false; break; }
+      }
+      if (ok) flat++;
+    }
+    return tested >= 30 ? flat / tested : 0;
+  };
+  // the coarsest grid whose squares on the design are all one colour
+  for (let n = 10; n <= Math.min(400, Math.floor(w / 3)); n++) {
+    if (flatAt(n) >= 0.98) return [n, Math.round(h / (w / n))];
+  }
+  return null;
+}
+
 // Fold near-identical shades (export noise) into the most-used one.
 function mergeNearColors(st) {
   const d = st.data, counts = new Map();
@@ -489,14 +602,15 @@ function chartError() {
   const { w, h } = R.chart;
   if (!(J.stW > 0 && J.stH > 0)) return 'Enter the stitch count, width × height.';
   if (J.stW > 400 || J.stH > 400) return 'The most is 400 stitches a side.';
-  if (w % J.stW || h % J.stH) return `This chart could not be added: ${w} × ${h} px doesn't split evenly into ${J.stW} × ${J.stH} stitches. Export it at one pixel per stitch, or a whole number of pixels per stitch.`;
-  if (w / J.stW !== h / J.stH) return 'The pixels per stitch must be the same across and down. Check the stitch count.';
+  if (!R.chart.fractional && (w % J.stW || h % J.stH)) return `This chart could not be added: ${w} × ${h} px doesn't split evenly into ${J.stW} × ${J.stH} stitches. Export it at one pixel per stitch, or a whole number of pixels per stitch.`;
+  if (!R.chart.fractional && w / J.stW !== h / J.stH) return 'The pixels per stitch must be the same across and down. Check the stitch count.';
+  if (R.chart.fractional && Math.abs(w / J.stW - h / J.stH) > 0.06 * (w / J.stW)) return "That stitch count doesn't fit this chart's shape. Check the width and height.";
   return null;
 }
 /** One pixel per stitch, sampled from the centre of each block. */
 function chartStitches(raw = false) {
   const { data, w } = R.chart;
-  const k = R.chart.w / J.stW;
+  const k = R.chart.w / J.stW, ky = R.chart.h / J.stH;
   const out = { width: J.stW, height: J.stH, data: new Uint8ClampedArray(J.stW * J.stH * 4) };
   // each stitch: the most common colour in the middle of its square, so soft
   // edges and gridlines around the square don't count
@@ -506,7 +620,7 @@ function chartStitches(raw = false) {
     counts.clear();
     let best = 0, bestKey = 0, bestIdx = 0;
     for (const fy of pts) for (const fx of pts) {
-      const sx = Math.min(w - 1, Math.floor((x + fx) * k)), sy = Math.min(R.chart.h - 1, Math.floor((y + fy) * k));
+      const sx = Math.min(w - 1, Math.floor((x + fx) * k)), sy = Math.min(R.chart.h - 1, Math.floor((y + fy) * ky));
       const s = (sy * w + sx) * 4;
       const key = data[s + 3] < 128 ? -1 : (data[s] << 16) | (data[s + 1] << 8) | data[s + 2];
       const n = (counts.get(key) || 0) + 1;
@@ -517,7 +631,7 @@ function chartStitches(raw = false) {
     if (bestKey === -1) continue; // bare canvas
     out.data[o] = data[bestIdx]; out.data[o + 1] = data[bestIdx + 1]; out.data[o + 2] = data[bestIdx + 2]; out.data[o + 3] = 255;
   }
-  mergeNearColors(out);
+  if (!R.chart.pattern) mergeNearColors(out);
   if (!raw && J.whiteChoice === 'remove') return applyWhite(out, whiteOutside(out).mask);
   return out;
 }
@@ -525,7 +639,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181632', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181655', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
@@ -547,7 +661,9 @@ async function loadScan(file, restoring = false) {
   refreshStatus();
   try {
     const head = await file.slice(0, 256 * 1024).arrayBuffer();
-    const dpi = readDpi(head) || 600;
+    const kind = await sniff(file);
+    if (!['png', 'jpeg', 'tiff'].includes(kind)) throw new Error(kind === 'pdf' ? 'A scan has to be a picture file: PNG, JPEG or TIFF.' : 'This file could not be opened as a scan. Use PNG, JPEG or TIFF.');
+    const dpi = (kind === 'tiff' ? (await tiffImage(file)).dpi : readDpi(head)) || 600;
     if (dpi < 300) throw new Error(`This scan is ${dpi} dpi. Scan again at 600 dpi (300 dpi is the lowest that works).`);
     R.scanBmp = await decode(file);
     J.dpi = dpi;

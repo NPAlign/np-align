@@ -18,7 +18,7 @@ export const GUIDE_HTML = `
   <tr><th>Setting</th><th>Use</th></tr>
   <tr><td>Resolution</td><td>600 dpi (300 minimum), the scanner's true optical resolution</td></tr>
   <tr><td>Color</td><td>Color, 24-bit</td></tr>
-  <tr><td>File type</td><td>PNG if you can, otherwise JPG at highest quality</td></tr>
+  <tr><td>File type</td><td>PNG or TIFF if you can, otherwise JPEG at highest quality</td></tr>
   <tr><td>Sharpening, descreening, auto color, auto exposure, dust removal</td><td>All off</td></tr>
   <tr><td>Scan area</td><td>The whole glass, so no intersections are cropped off</td></tr>
 </table>
@@ -42,8 +42,10 @@ export const GUIDE_HTML = `
 
 <h2>5. Your chart</h2>
 <ul>
-  <li>A PNG: one flat color per stitch, no gridlines, symbols, border or smoothing. Bare canvas transparent.</li>
-  <li>One pixel per stitch is best. Any whole number of pixels per stitch works: a chart 104 stitches across can be 104, 208 or 1040 px wide, but not 2400.</li>
+  <li><b>Stitchly</b> (.stitchly) or <b>OXS</b> (.oxs) chart files come in as they are, with their stitch count and DMC thread colours. If a thread's colour isn't known, the Chart tile lets you pick it once and remembers it.</li>
+  <li><b>MacStitch</b>: its own .chart files are locked, so export the chart as OXS from MacStitch and add that.</li>
+  <li><b>StitchALot</b>: export the chart as a PNG for now.</li>
+  <li><b>A picture of the chart</b> (PNG, JPEG, TIFF, or a PDF page): one flat colour per stitch, no gridlines, symbols, border or smoothing, bare canvas transparent. One pixel per stitch is best; any whole number of pixels per stitch works (a chart 104 stitches across can be 104, 208 or 1040 px wide). A PDF can be any size.</li>
 </ul>
 
 <h2>6. Place it in xTool Studio and print</h2>

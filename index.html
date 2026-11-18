@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="np-version" content="202611181632" />
+  <meta name="np-version" content="202611181655" />
   <title>NP Align</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181632" />
+  <link rel="stylesheet" href="styles.css?v=202611181655" />
 </head>
 <body>
   <header class="topbar">
@@ -161,24 +161,24 @@
       <div class="screen-files">
         <div class="files-main">
           <label class="drop" id="chartDrop">
-            <input type="file" id="chartFile" accept="image/png" hidden />
+            <input type="file" id="chartFile" accept=".stitchly,.oxs,.sal,.chart,image/png,image/jpeg,image/tiff,application/pdf,.tif,.tiff,.pdf" hidden />
             <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
             <span class="drop-body">
               <span class="drop-title">Chart</span>
               <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
-              <span class="drop-hint">A PNG: one color per stitch, no gridlines, symbols or border, bare canvas left transparent. One pixel per stitch is best; any whole number of pixels per stitch works.</span>
+              <span class="drop-hint">A Stitchly or OXS chart file, or a picture of the chart (PNG, JPEG, TIFF or PDF): one color per stitch, no gridlines, symbols or border, bare canvas left transparent. MacStitch: export it as OXS.</span>
               <span class="drop-check"></span>
             </span>
             <img class="drop-thumb pixelated" alt="" hidden />
           </label>
 
           <label class="drop" id="scanDrop">
-            <input type="file" id="scanFile" accept="image/png,image/jpeg,image/tiff" hidden />
+            <input type="file" id="scanFile" accept="image/png,image/jpeg,image/tiff,.tif,.tiff" hidden />
             <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg></span>
             <span class="drop-body">
               <span class="drop-title">Canvas Scan</span>
               <span class="drop-cta">Drop it here, or <u>choose a file</u></span>
-              <span class="drop-hint">PNG or JPG at 600 dpi (300 dpi minimum), every scanner enhancement off, with your dot and the whole design area in one pass.</span>
+              <span class="drop-hint">PNG, JPEG or TIFF at 600 dpi (300 dpi minimum), every scanner enhancement off, with your dot and the whole design area in one pass.</span>
               <span class="drop-check"></span>
             </span>
             <img class="drop-thumb" alt="" hidden />
@@ -362,6 +362,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181632"></script>
+  <script type="module" src="src/app.js?v=202611181655"></script>
 </body>
 </html>

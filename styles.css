@@ -464,3 +464,9 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .pc-menu button { white-space: nowrap; }
 
 .menu-version { display: block; padding: 8px 12px 4px; margin-top: 4px; border-top: 1px solid #ddd; font-size: 12px; color: var(--ink-3); }
+
+.threads { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.thread { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.thread input[type=color] { width: 26px; height: 22px; padding: 0; border: 1px solid #bbb; border-radius: 4px; background: none; cursor: pointer; }
+.thread.unknown span { color: #9d6b00; font-weight: 700; }
+.thread small { color: var(--ink-3); }

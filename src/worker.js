@@ -1,5 +1,5 @@
 // Runs the canvas analysis off the main thread so the page stays responsive.
-import { analyzeCanvas } from './align.js?v=202611181632';
+import { analyzeCanvas } from './align.js?v=202611181655';
 
 self.onmessage = (e) => {
   const { job, bitmap, dpi, mesh, polarity, autoDpi } = e.data;
