@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181618';
-import { renderPrint, rotateDesign } from './render.js?v=202611181618';
-import { readDpi, setPngDpi } from './png.js?v=202611181618';
-import { matchGrids } from './match.js?v=202611181618';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181618';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181618';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181618';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181618';
+import { Viewer } from './viewer.js?v=202611181619';
+import { renderPrint, rotateDesign } from './render.js?v=202611181619';
+import { readDpi, setPngDpi } from './png.js?v=202611181619';
+import { matchGrids } from './match.js?v=202611181619';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181619';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181619';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181619';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181619';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -19,9 +19,11 @@ function show(name) {
 }
 
 const avatar = $('avatar'), menu = $('accountMenu');
+// The account button: a pink heart
 function refreshAvatar() {
   const p = profile.get();
-  avatar.textContent = (p.name.trim()[0] || '·').toUpperCase();
+  avatar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3 1.7-1.8 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+  avatar.setAttribute('aria-label', p.name.trim() ? `Account menu for ${p.name.trim()}` : 'Account menu');
 }
 avatar.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -484,7 +486,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181618', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181619', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {

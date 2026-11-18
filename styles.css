@@ -453,3 +453,7 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .dialog a { color: inherit; }
 
 .slider-ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-top: -12px; }
+
+.avatar { display: grid; place-items: center; }
+.avatar svg { width: 26px; height: 26px; fill: var(--accent); }
+@media (max-width: 760px) { .avatar svg { width: 21px; height: 21px; } }

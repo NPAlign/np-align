@@ -4,7 +4,7 @@
 // around its intersection with the four holes left empty. One layer per
 // colour; a magenta guide frame follows the outer intersections.
 
-import { inverseMap } from './match.js?v=202611181618';
+import { inverseMap } from './match.js?v=202611181619';
 
 const LIGHT = 232; // luminance above which a colour counts as very light
 
