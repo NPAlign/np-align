@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="np-version" content="202611181655" />
+  <meta name="np-version" content="202611181700" />
   <title>NP Align</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181655" />
+  <link rel="stylesheet" href="styles.css?v=202611181700" />
 </head>
 <body>
   <header class="topbar">
@@ -127,6 +127,16 @@
             <input type="range" id="pWidth" min="0" max="100" step="5" /></label>
           <div class="slider-ends" aria-hidden="true"><span>Threads only</span><span>Whole square</span></div>
           <p class="note">How much of each stitch's square gets paint. Wider covers the white thread fully even if the print lands a touch off.</p>
+        </div>
+        <div class="card stack">
+          <h2>Thread colors</h2>
+          <p class="note">Teach NP Align the exact colors Stitchly uses: add a Stitchly chart together with the PNG you exported from it (no gridlines, symbols or border). You can add several pairs at once; give each pair the same name, like <i>dmc.stitchly</i> and <i>dmc.png</i>. Learned colors are saved on this computer only.</p>
+          <div class="btn-row">
+            <label class="btn btn-outline btn-sm">Add chart + PNG pairs<input type="file" id="learnFiles" multiple accept=".stitchly,image/png,image/jpeg,image/tiff,.tif,.tiff" hidden /></label>
+            <button type="button" class="btn btn-outline btn-sm" id="forgetColors">Forget saved colors</button>
+          </div>
+          <div class="alerts" id="learnResult"></div>
+          <p class="note" id="learnCount"></p>
         </div>
         <div class="card stack">
           <h2>Which way your design prints</h2>
@@ -362,6 +372,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181655"></script>
+  <script type="module" src="src/app.js?v=202611181700"></script>
 </body>
 </html>

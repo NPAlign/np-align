@@ -5,7 +5,7 @@
 //  - PDF charts (first page drawn as a picture, then read like a PNG)
 // A chart pattern comes back as one pixel per stitch, bare canvas transparent.
 
-import { DMC } from './dmc.js?v=202611181655';
+import { DMC } from './dmc.js?v=202611181700';
 
 /** What kind of file this is, from its first bytes and name. */
 export async function sniff(file) {
@@ -217,6 +217,75 @@ export async function readStitchly(file, custom) {
     out.data[i * 4] = r; out.data[i * 4 + 1] = g; out.data[i * 4 + 2] = b; out.data[i * 4 + 3] = 255;
   });
   return { ...out, threads: [...threads.values()], mesh: R(root.fabricCount) || null, name: R(root.patternName)?.['NS.string'] };
+}
+
+/** The thread code in every cell of a Stitchly chart (null = bare canvas). */
+export async function stitchlyCodes(file) {
+  const text = await file.text();
+  const m = /<key>PatternData<\/key>\s*<data>([\s\S]*?)<\/data>/.exec(text);
+  if (!m) throw new Error(`${file.name} isn't a Stitchly chart NP Align can read.`);
+  const arch = bplist(Uint8Array.from(atob(m[1].replace(/\s+/g, '')), (ch) => ch.charCodeAt(0)));
+  const objs = arch.$objects;
+  const R = (v) => (v && v.UID !== undefined ? objs[v.UID] : v);
+  const root = R(arch.$top.root);
+  const codes = R(root.layerCodes)['NS.objects'].map((u) => {
+    const c = R(u);
+    return !c || /empty$/.test(c) ? null : String(c).replace(/^.*\s/, '').trim();
+  });
+  return { width: R(root.width), height: R(root.height), codes };
+}
+
+/**
+ * Learn each thread's exact colour by laying a Stitchly chart over the PNG
+ * Stitchly exported from it. The PNG may cover the whole grid or just the
+ * stitched part; whichever lines up so that every thread is one colour wins.
+ * Returns { colours: {code: '#rrggbb'}, agreement, threads }.
+ */
+export function learnColours(chart, img) {
+  const { width: gw, height: gh, codes } = chart;
+  const { width: W, height: H, data } = img;
+  // stitched area in the grid
+  let cx0 = gw, cx1 = -1, cy0 = gh, cy1 = -1;
+  codes.forEach((c, i) => { if (!c) return; const x = i % gw, y = (i - x) / gw; if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; if (y < cy0) cy0 = y; if (y > cy1) cy1 = y; });
+  if (cx1 < 0) throw new Error('That Stitchly chart has no stitches in it.');
+  // drawn area in the picture: not transparent, and not the corner colour
+  const corner = 0, isBg = (i) => data[i + 3] < 128 || (data[corner + 3] >= 128 && Math.abs(data[i] - data[corner]) + Math.abs(data[i + 1] - data[corner + 1]) + Math.abs(data[i + 2] - data[corner + 2]) < 12);
+  let px0 = W, px1 = -1, py0 = H, py1 = -1;
+  for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) if (!isBg((y * W + x) * 4)) { if (x < px0) px0 = x; if (x > px1) px1 = x; if (y < py0) py0 = y; if (y > py1) py1 = y; }
+  const tries = [
+    { gx: 0, gy: 0, gw, gh, x: 0, y: 0, w: W, h: H }, // picture = whole grid
+    { gx: cx0, gy: cy0, gw: cx1 - cx0 + 1, gh: cy1 - cy0 + 1, x: 0, y: 0, w: W, h: H }, // picture = stitched part
+  ];
+  if (px1 >= 0) tries.push({ gx: cx0, gy: cy0, gw: cx1 - cx0 + 1, gh: cy1 - cy0 + 1, x: px0, y: py0, w: px1 - px0 + 1, h: py1 - py0 + 1 }); // drawn part = stitched part
+  let best = null;
+  for (const t of tries) {
+    const kx = t.w / t.gw, ky = t.h / t.gh;
+    if (kx < 1 || ky < 1 || Math.abs(kx - ky) > 0.05 * kx) continue;
+    const seen = new Map(); // code -> Map(colour -> count)
+    let total = 0;
+    for (let gy = 0; gy < t.gh; gy++) for (let gx = 0; gx < t.gw; gx++) {
+      const code = codes[(t.gy + gy) * gw + t.gx + gx];
+      if (!code) continue;
+      const sx = Math.min(W - 1, Math.floor(t.x + (gx + 0.5) * kx)), sy = Math.min(H - 1, Math.floor(t.y + (gy + 0.5) * ky));
+      const i = (sy * W + sx) * 4;
+      if (data[i + 3] < 128) continue;
+      const hex = '#' + [data[i], data[i + 1], data[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+      if (!seen.has(code)) seen.set(code, new Map());
+      const m = seen.get(code);
+      m.set(hex, (m.get(hex) || 0) + 1);
+      total++;
+    }
+    let agree = 0;
+    const colours = {};
+    for (const [code, m] of seen) {
+      const [hex, n] = [...m.entries()].sort((a, b) => b[1] - a[1])[0];
+      colours[code] = hex; agree += n;
+    }
+    const agreement = total ? agree / total : 0;
+    if (!best || agreement > best.agreement) best = { colours, agreement, threads: seen.size };
+  }
+  if (!best || best.agreement < 0.95) throw new Error("The chart and the picture don't line up. Export the PNG from that same Stitchly chart with no gridlines, symbols or border.");
+  return best;
 }
 
 // OXS: <chart><properties chartwidth chartheight/><palette><palette_item

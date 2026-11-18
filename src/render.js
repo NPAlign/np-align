@@ -2,7 +2,7 @@
 // canvas around its own intersection (bounded by the centres of the four
 // surrounding holes), then every hole pixel is cleared so no ink is put
 // where there is no thread.
-import { dilate } from './align.js?v=202611181655';
+import { dilate } from './align.js?v=202611181700';
 
 const maskCache = new WeakMap();
 

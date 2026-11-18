@@ -1,12 +1,12 @@
-import { Viewer } from './viewer.js?v=202611181655';
-import { renderPrint, rotateDesign } from './render.js?v=202611181655';
-import { readDpi, setPngDpi } from './png.js?v=202611181655';
-import { matchGrids } from './match.js?v=202611181655';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181655';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181655';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181655';
-import { sniff, readTiff, readStitchly, readOxs, pdfBitmap } from './formats.js?v=202611181655';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181655';
+import { Viewer } from './viewer.js?v=202611181700';
+import { renderPrint, rotateDesign } from './render.js?v=202611181700';
+import { readDpi, setPngDpi } from './png.js?v=202611181700';
+import { matchGrids } from './match.js?v=202611181700';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181700';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181700';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181700';
+import { sniff, readTiff, readStitchly, readOxs, pdfBitmap, stitchlyCodes, learnColours } from './formats.js?v=202611181700';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181700';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -152,6 +152,7 @@ function showPrefs() {
   setSwitch($('pOutline'), p.outline);
   document.querySelectorAll('[data-porient]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.porient === p.orient)));
   $('logoWidth').value = p.logoWidth;
+  showColourCount();
   $('pWidth').value = Math.round((p.stitchWidth ?? 0.6) * 100);
   $('pWidthOut').textContent = widthLabel(p.stitchWidth ?? 0.6);
   renderLogoPreview(p.logo);
@@ -195,6 +196,53 @@ $('logoRemove').addEventListener('click', () => {
   if (p.placements.logo) p.placements.logo = null;
   prefs.set(p); renderLogoPreview(null); prefPicker?.render();
 });
+// ---------------------------------------------------------------- thread colours
+function showColourCount() {
+  const n = Object.keys(prefs.get().threadColors || {}).length;
+  $('learnCount').textContent = n ? `${n.toLocaleString()} thread color${n === 1 ? '' : 's'} saved.` : 'No thread colors saved yet. Charts use the standard DMC colors.';
+  $('forgetColors').disabled = !n;
+}
+$('learnFiles').addEventListener('change', async () => {
+  const files = [...$('learnFiles').files];
+  $('learnFiles').value = '';
+  const out = $('learnResult');
+  out.innerHTML = '';
+  const note = (text, bad = false) => { const d = document.createElement('div'); d.className = `alert ${bad ? 'error' : 'ok'}`; d.textContent = text; out.append(d); };
+  // pair each .stitchly with the picture of the same name (or the only picture)
+  const stem = (f) => f.name.toLowerCase().replace(/\.[^.]+$/, '').replace(/\s*\(\d+\)$/, '').trim();
+  const charts = files.filter((f) => /\.stitchly$/i.test(f.name));
+  const pics = files.filter((f) => !/\.stitchly$/i.test(f.name));
+  if (!charts.length || !pics.length) return note('Add a Stitchly chart and the PNG exported from it, both at once.', true);
+  const learned = {};
+  for (const ch of charts) {
+    const pic = pics.find((p) => stem(p) === stem(ch)) || (charts.length === 1 && pics.length === 1 ? pics[0] : null);
+    if (!pic) { note(`${ch.name}: no PNG with the same name.`, true); continue; }
+    try {
+      const bmp = await decode(pic);
+      const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+      const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
+      const r = learnColours(await stitchlyCodes(ch), ctx.getImageData(0, 0, bmp.width, bmp.height));
+      Object.assign(learned, r.colours);
+      note(`${ch.name} + ${pic.name}: learned ${r.threads} thread color${r.threads === 1 ? '' : 's'}${r.agreement < 0.999 ? ` (${(r.agreement * 100).toFixed(1)}% of stitches agreed)` : ''}.`);
+    } catch (e) {
+      note(`${ch.name} + ${pic.name}: ${e.message}`, true);
+    }
+  }
+  const n = Object.keys(learned).length;
+  if (n) {
+    const p = prefs.get();
+    p.threadColors = { ...(p.threadColors || {}), ...learned };
+    if (!prefs.set(p)) note('Your browser ran out of room to save these colors.', true);
+  }
+  showColourCount();
+});
+$('forgetColors').addEventListener('click', () => {
+  if (!confirm('Forget every saved thread color? Charts go back to the standard DMC colors. Your charts and jobs are not affected.')) return;
+  const p = prefs.get(); p.threadColors = {}; prefs.set(p);
+  $('learnResult').innerHTML = '';
+  showColourCount();
+});
+
 $('pWidth').addEventListener('input', () => {
   const p = prefs.get(); p.stitchWidth = +$('pWidth').value / 100; prefs.set(p);
   $('pWidthOut').textContent = widthLabel(p.stitchWidth);
@@ -639,7 +687,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181655', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181700', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
