@@ -49,6 +49,7 @@ export const DEFAULT_PREFS = {
   orient: 'match', // 'match' | 'drawn'
   logo: null, // data URL
   logoWidth: 16, // stitches
+  stitchWidth: 0.6, // 0 threads only … 1 whole square
   placements: { key: null, logo: null }, // { corner: 'tl'|'tr'|'bl'|'br', dir?: 'down'|'across' }
 };
 

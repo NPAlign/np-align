@@ -451,3 +451,5 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .dialog h2 { margin: 0 0 10px; }
 .dialog .btn-row { margin-top: 18px; flex-wrap: wrap; }
 .dialog a { color: inherit; }
+
+.slider-ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-top: -12px; }

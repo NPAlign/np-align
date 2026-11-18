@@ -1,11 +1,11 @@
-import { Viewer } from './viewer.js?v=202611181615';
-import { renderPrint, rotateDesign } from './render.js?v=202611181615';
-import { readDpi, setPngDpi } from './png.js?v=202611181615';
-import { matchGrids } from './match.js?v=202611181615';
-import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181615';
-import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181615';
-import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181615';
-import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181615';
+import { Viewer } from './viewer.js?v=202611181618';
+import { renderPrint, rotateDesign } from './render.js?v=202611181618';
+import { readDpi, setPngDpi } from './png.js?v=202611181618';
+import { matchGrids } from './match.js?v=202611181618';
+import { buildGeometry, stitchShapes, guideFrame, buildSvg, drawPreview } from './svg.js?v=202611181618';
+import { designColors, buildKey, buildLogo, placeInCorner, composite, cornerPicker } from './extras.js?v=202611181618';
+import { jobs, prefs, profile, relativeDay, STATUS } from './store.js?v=202611181618';
+import { GUIDE_HTML, TROUBLE_HTML } from './guide.js?v=202611181618';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -114,6 +114,8 @@ function showPrefs() {
   setSwitch($('pOutline'), p.outline);
   document.querySelectorAll('[data-porient]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.porient === p.orient)));
   $('logoWidth').value = p.logoWidth;
+  $('pWidth').value = Math.round((p.stitchWidth ?? 0.6) * 100);
+  $('pWidthOut').textContent = widthLabel(p.stitchWidth ?? 0.6);
   renderLogoPreview(p.logo);
   const api = {
     get: () => prefs.get().placements,
@@ -151,6 +153,10 @@ $('logoRemove').addEventListener('click', () => {
   if (p.placements.logo) p.placements.logo = null;
   prefs.set(p); renderLogoPreview(null); prefPicker?.render();
 });
+$('pWidth').addEventListener('input', () => {
+  const p = prefs.get(); p.stitchWidth = +$('pWidth').value / 100; prefs.set(p);
+  $('pWidthOut').textContent = widthLabel(p.stitchWidth);
+});
 $('logoWidth').addEventListener('change', () => {
   const p = prefs.get(); p.logoWidth = Math.max(4, Math.min(80, +$('logoWidth').value || 16)); prefs.set(p);
 });
@@ -180,7 +186,7 @@ async function newJob() {
     id: jobs.newId(), created: Date.now(), status: 'draft', step: 1, reached: 1, name: '',
     mesh: 18, stW: null, stH: null,
     outline: p.outline, orient: p.orient, placements: structuredClone(p.placements),
-    logo: p.logo, logoWidth: p.logoWidth, customized: false,
+    logo: p.logo, logoWidth: p.logoWidth, stitchWidth: p.stitchWidth ?? 0.6, customized: false,
     manualTurn: 0, nudge: [0, 0],
     files: {}, thumb: null, dpi: null,
   };
@@ -478,7 +484,7 @@ function chartStitches(raw = false) {
 // ---------------------------------------------------------------- scan & screenshot
 function analyze(file, opts) {
   return new Promise(async (resolve, reject) => {
-    const w = new Worker(new URL('./worker.js?v=202611181615', import.meta.url), { type: 'module' });
+    const w = new Worker(new URL('./worker.js?v=202611181618', import.meta.url), { type: 'module' });
     let bitmap;
     try { bitmap = await decode(file); } catch (e) { w.terminate(); return reject(e); }
     w.onmessage = (e) => {
@@ -765,7 +771,7 @@ function refreshReview(fit = false) {
   R.layout = buildLayout();
   reviewPicker.render();
   document.querySelectorAll('[data-turn]').forEach((b) => b.setAttribute('aria-pressed', String(J.manualTurn !== 0 && +b.dataset.turn === J.manualTurn)));
-  R.shapes = stitchShapes(R.geo, R.layout.grid, J.outline);
+  R.shapes = stitchShapes(R.geo, R.layout.grid, J.outline, J.stitchWidth ?? 0.6);
   R.frame = guideFrame(R.geo);
   const scale = Math.min(4, Math.max(1, 30 / R.shot.pitch));
   R.preview = drawPreview(R.preview || document.createElement('canvas'), R.shot, R.shapes, R.frame, scale);
@@ -961,10 +967,12 @@ $('zoomFit').addEventListener('click', () => viewer.fit());
 // ===================================================================== print
 function enterPrint() {
   if (!R.layout) R.layout = buildLayout();
-  R.shapes = R.shapes || stitchShapes(R.geo, R.layout.grid, J.outline);
+  R.shapes = stitchShapes(R.geo, R.layout.grid, J.outline, J.stitchWidth ?? 0.6);
   R.frame = R.frame || guideFrame(R.geo);
   const built = buildSvg(R.shot, R.geo, R.shapes, R.frame, R.scan.measuredMesh);
   R.svg = built;
+  $('stitchWidth').value = Math.round((J.stitchWidth ?? 0.6) * 100);
+  $('widthOut').textContent = widthLabel(J.stitchWidth ?? 0.6);
   $('printFacts').innerHTML = [
     ['Size', `${built.mmW.toFixed(1)} × ${built.mmH.toFixed(1)} mm`],
     ['Stitches', R.shapes.length.toLocaleString()],
@@ -975,6 +983,23 @@ function enterPrint() {
   updateViewer(true);
   document.querySelectorAll('[data-outcome]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.outcome === J.status)));
 }
+// Stitch width on the Print step: redraws the preview and the files
+const widthLabel = (w) => (w <= 0 ? 'Threads only' : w >= 1 ? 'Whole square' : `${Math.round(w * 100)}%`);
+let widthTimer = 0;
+$('stitchWidth').addEventListener('input', () => {
+  J.stitchWidth = +$('stitchWidth').value / 100;
+  $('widthOut').textContent = widthLabel(J.stitchWidth);
+  clearTimeout(widthTimer);
+  widthTimer = setTimeout(() => {
+    customized();
+    R.shapes = stitchShapes(R.geo, R.layout.grid, J.outline, J.stitchWidth);
+    const scale = Math.min(4, Math.max(1, 30 / R.shot.pitch));
+    R.preview = drawPreview(R.preview || document.createElement('canvas'), R.shot, R.shapes, R.frame, scale);
+    R.svg = buildSvg(R.shot, R.geo, R.shapes, R.frame, R.scan.measuredMesh);
+    updateViewer(false);
+  }, 80);
+});
+
 // The same print as a PNG, for editing: transparent background, real size
 // written into the file (400 dpi), no magenta frame (its edges do that job).
 $('downloadPng').addEventListener('click', async () => {

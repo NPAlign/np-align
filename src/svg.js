@@ -4,7 +4,7 @@
 // around its intersection with the four holes left empty. One layer per
 // colour; a magenta guide frame follows the outer intersections.
 
-import { inverseMap } from './match.js?v=202611181615';
+import { inverseMap } from './match.js?v=202611181618';
 
 const LIGHT = 232; // luminance above which a colour counts as very light
 
@@ -112,8 +112,14 @@ export function buildGeometry(scan, shot, match) {
   return { px, py, size, cols, rows, hcols: B.cols, shared, mmPerPx };
 }
 
-/** Each stitch as a "+" polygon in screenshot pixels. */
-export function stitchShapes(geo, grid, outline, clearance = 0.04) {
+/**
+ * Each stitch as a shape in screenshot pixels. `width` runs from 0 (threads
+ * only: a "+" that keeps ink back from every hole) to 1 (the whole square
+ * around the intersection, holes included). In between, the cut-outs at the
+ * holes shrink, so the ink covers the threads fully and reaches a little
+ * into each hole: more forgiving if the print lands a touch off.
+ */
+export function stitchShapes(geo, grid, outline, width = 0.6, clearance = 0.04) {
   const shapes = [];
   const { px, py, size, hcols } = geo;
   for (let r = 0; r < grid.height; r++) {
@@ -123,8 +129,8 @@ export function stitchShapes(geo, grid, outline, clearance = 0.04) {
       if (isBareCanvas(grid.data[i], grid.data[i + 1], grid.data[i + 2])) continue;
       const k = [r * hcols + c, r * hcols + c + 1, (r + 1) * hcols + c + 1, (r + 1) * hcols + c];
       const Q = k.map((h) => [px[h], py[h]]);
-      const S = k.map((h) => Math.min(0.42, 0.5 * Math.sqrt(size[h]) + clearance));
-      const pts = plus(S).map(([u, v]) => bilerp(Q, u, v));
+      const S = k.map((h) => Math.min(0.42, 0.5 * Math.sqrt(size[h]) + clearance) * (1 - width));
+      const pts = Math.max(...S) < 0.005 ? Q : plus(S).map(([u, v]) => bilerp(Q, u, v));
       const hex = '#' + [grid.data[i], grid.data[i + 1], grid.data[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('');
       shapes.push({ hex, pts, light: outline && luminance(hex) > LIGHT, part: grid.part ? grid.part[r * grid.width + c] || 1 : 1 });
     }

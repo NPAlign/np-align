@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202611181615" />
+  <link rel="stylesheet" href="styles.css?v=202611181618" />
 </head>
 <body>
   <header class="topbar">
@@ -118,6 +118,13 @@
             <button type="button" role="switch" aria-labelledby="pOutlineL" id="pOutline" class="switch"><span></span></button>
           </div>
           <p class="note">Adds a thin gray line around very light colors so they show on white canvas, in the design, the color key and your logo. Turn it off to print them with no line.</p>
+        </div>
+        <div class="card stack">
+          <h2>Stitch width</h2>
+          <label class="slider"><span>Every new job starts at <output id="pWidthOut"></output></span>
+            <input type="range" id="pWidth" min="0" max="100" step="5" /></label>
+          <div class="slider-ends" aria-hidden="true"><span>Threads only</span><span>Whole square</span></div>
+          <p class="note">How much of each stitch's square gets paint. Wider covers the white thread fully even if the print lands a touch off.</p>
         </div>
         <div class="card stack">
           <h2>Which way your design prints</h2>
@@ -316,6 +323,10 @@
         <div id="panel4" class="panel-body" hidden>
           <h2>Your print file</h2>
           <dl class="facts" id="printFacts"></dl>
+          <label class="slider"><span>Stitch width <output id="widthOut"></output></span>
+            <input type="range" id="stitchWidth" min="0" max="100" step="5" aria-describedby="widthNote" /></label>
+          <div class="slider-ends" aria-hidden="true"><span>Threads only</span><span>Whole square</span></div>
+          <p class="note" id="widthNote">Wider paint covers the white thread fully, even if the print lands a touch off. Threads only keeps ink out of the holes; whole square paints the holes too.</p>
           <button type="button" class="btn btn-primary btn-block" id="downloadSvg">Download the print file (SVG)</button>
           <button type="button" class="btn btn-outline btn-block" id="downloadPng">Download as PNG (to edit)</button>
           <p class="note" id="pngNote">The PNG is the same print at 400 dpi with a transparent background, the same size as the SVG. Recolor or erase in xTool Studio if you like, but don't resize, crop or rotate it. Its edges line up the way the magenta frame does.</p>
@@ -349,6 +360,6 @@
     </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="src/app.js?v=202611181615"></script>
+  <script type="module" src="src/app.js?v=202611181618"></script>
 </body>
 </html>
